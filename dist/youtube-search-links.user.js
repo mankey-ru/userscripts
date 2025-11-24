@@ -3,7 +3,7 @@
 // @description  Adds extra search links to discogs.com including Rutracker and VK.com music
 // @author       mankey-ru
 // @namespace    mankey-ru/youtube-search-links
-// @version      1.0.0
+// @version      1.0.5
 // @match        https://www.youtube.com/*
 // @grant        none
 // @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/youtube-search-links.user.js

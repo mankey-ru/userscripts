@@ -3,7 +3,7 @@
 // @description  Adds extra search links to discogs.com including Rutracker and VK.com music
 // @author       mankey-ru
 // @namespace    mankey-ru/discogs-extra-stuff
-// @version      1.0.1
+// @version      1.0.5
 // @match        https://www.discogs.com/*
 // @grant        none
 // @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/discogs-extra-stuff.user.js
