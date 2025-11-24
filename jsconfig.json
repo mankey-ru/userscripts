@@ -1,0 +1,15 @@
+{
+  "include": [
+    "src/**/*",
+    "dist/**/*",
+    "tests/**/*",
+    "pg-typedef.d.ts",
+    "main.d.ts"
+  ],
+
+	"compilerOptions": {
+    "checkJs": true,
+		"module": "nodenext",
+		"types": ["jest"]
+	}
+}
