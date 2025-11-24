@@ -2,15 +2,14 @@
 // @name         [DES] Discogs Extra Stuff
 // @description  Adds extra search links to discogs.com including Rutracker and VK.com music
 // @author       mankey-ru
-// @namespace    mankey-ru/discogs-search-links
-// @version      1.0.0
+// @namespace    mankey-ru/discogs-extra-stuff
+// @version      1.0.1
 // @match        https://www.discogs.com/*
 // @grant        none
-// @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/discogs-search-links.user.js
+// @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/discogs-extra-stuff.user.js
 // ==/UserScript==
 
 const projName = 'DES';
-
 const logFlag = 1;
 
 window.setTimeout(init, 1000);
