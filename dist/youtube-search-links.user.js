@@ -3,7 +3,7 @@
 // @description  Adds extra search links to discogs.com including Rutracker and VK.com music
 // @author       mankey-ru
 // @namespace    mankey-ru/youtube-search-links
-// @version      1.0.6
+// @version      1.0.7
 // @match        https://www.youtube.com/*
 // @grant        none
 // @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/youtube-search-links.user.js
@@ -13,9 +13,9 @@ const projName = 'YSL';
 const logFlag = 1;
 
 let titleEl;
-let checker = setInterval(function () {
+let titleElementCheckInterval = setInterval(function () {
 	if (getTitleEl()) {
-		clearInterval(checker);
+		clearInterval(titleElementCheckInterval);
 		init();
 	}
 }, 50);
@@ -32,7 +32,7 @@ function makeLink (providerName, baseUrl) {
 	link.innerText = 'Search ' + providerName;
 	link.setAttribute('style', 'background: purple; display: inline-block; padding: 5px; color: #fff; text-decoration:none; border-radius: 5px; margin-left: 1rem;');
 	link.setAttribute('target', '_blank');
-	link.setAttribute('href', '#_here_will_be_the_link');
+	link.setAttribute('href', '#_href_will_be_set_on_click__target_is_blank_dont_be_a_pussy');
 	elToAppend.parentNode.appendChild(link);
 	link.addEventListener('click', function () {
 		// @ts-expect-error
@@ -41,7 +41,8 @@ function makeLink (providerName, baseUrl) {
 		link.setAttribute('href', href); // или this тоже канает. TODO сделать таймер по установке хрефа, типа раз в секунду
 		window.open(href, '_blank');
 	})
-	log('makeLink', link);
+	log('makeLink done.\nAppended to element:', elToAppend, '\nLink element', link);
+	return link
 }
 
 function getTitleEl () {
