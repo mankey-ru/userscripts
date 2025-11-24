@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         Ring My Droid [RMD]
+// @name         [RMD] Ring My Droid
 // @description  Automatically presses Ring button in Andoid Find Hub
 // @author       mankey-ru
 // @namespace    mankey-ru/ring-my-droid
-// @version      1.0.1
+// @version      1.0.2
 // @match        https://www.google.com/android/find*
 // @grant        none
 // @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/ring-my-droid.user.js

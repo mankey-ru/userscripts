@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Lyrics: Clean Print [LCP]
+// @name         [LCP] Lyrics: Clean Print
 // @description  Adds Clean button to make lyrics page print-ready. Supports Genius.com
 // @author       mankey-ru
 // @namespace    mankey-ru/lyrics-clean-print
