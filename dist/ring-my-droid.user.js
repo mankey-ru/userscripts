@@ -6,8 +6,7 @@
 // @version      1.0
 // @match        https://www.google.com/android/find*
 // @grant        none
-// @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/ring-my-droid.user.js
-// @downloadURL  https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/ring-my-droid.user.js
+// @updateURL    https://github.com/mankey-ru/userscripts/blob/main/dist/ring-my-droid.user.js
 // ==/UserScript==
 
 const logFlag = 1;
