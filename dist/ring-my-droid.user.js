@@ -1,13 +1,15 @@
 // ==UserScript==
-// @name         Ring My Droid [rmd]
+// @name         Ring My Droid [RMD]
 // @description  Automatically presses Ring button in Andoid Find Hub
 // @author       mankey-ru
-// @namespace    mankey-ru
-// @version      1.0
+// @namespace    mankey-ru/ring-my-droid
+// @version      1.0.1
 // @match        https://www.google.com/android/find*
 // @grant        none
 // @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/ring-my-droid.user.js
 // ==/UserScript==
+
+const projName = 'RMD';
 
 const logFlag = 1;
 
@@ -53,5 +55,5 @@ function waitFor (selector, callback, textContent) {
 
 function log (...args) {
 	if (logFlag)
-		console.log(`[rmd]`, ...args);
+		console.log(`[${projName}]`, ...args);
 }

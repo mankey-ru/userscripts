@@ -9,7 +9,6 @@
 
 	"compilerOptions": {
     "checkJs": true,
-		"module": "nodenext",
-		"types": ["jest"]
+		"module": "nodenext"
 	}
 }
