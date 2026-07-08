@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.62
+// @version      1.63
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -41,6 +41,8 @@ class VacTrak {
 
 		const nextDelay = baseMs + jitterMs;
 
+		topScreenProgressBar(nextDelay); // запускаем прогресс бар сверху экрана
+
 		VacTrak.log(`Следующая перезагрузка через ${(nextDelay / 1000).toFixed(1)} сек (jitter ${jitterMs} мс)`);
 
 		setTimeout(() => {
@@ -67,7 +69,7 @@ Key is "${this.vacMemKey}"`);
 			this.processNewVacs();
 		}
 
-		this.cleanOutdatedVacs()
+		this.cleanOutdatedVacs();
 
 		// Запускаем первый таймер с jitter
 		this.scheduleNextReload();
@@ -245,3 +247,50 @@ new VacTrak().run();
  * @param {function} [onclick] - Click callback (only used if the first param is a string).
  * @returns {void}
  */
+
+/**
+ * Запускает progress bar сверху экрана на 60 секунд
+ * @param {number} durationMs - длительность в мс (по умолчанию 60000)
+ * @param {string} color - цвет бара (по умолчанию #00ff00)
+ */
+function topScreenProgressBar(durationMs = 60000, color = '#00ff00') {
+	let bar = document.getElementById('progress-bar-top');
+
+	// Создаём элемент, если его нет
+	if (!bar) {
+		bar = document.createElement('div');
+		bar.id = 'progress-bar-top';
+		bar.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 2px;
+                background: ${color};
+                width: 0%;
+                z-index: 999999;
+                transition: width 0.05s linear;
+                pointer-events: none;
+            `;
+		document.documentElement.appendChild(bar); // или document.body
+	}
+
+	// Сброс и запуск
+	bar.style.width = '0%';
+	bar.style.background = color;
+
+	const startTime = Date.now();
+	const interval = 50;
+
+	const timer = setInterval(() => {
+		const elapsed = Date.now() - startTime;
+		const progress = Math.min((elapsed / durationMs) * 100, 100);
+		bar.style.width = `${progress}%`;
+
+		if (progress >= 100) {
+			clearInterval(timer);
+			// bar.style.background = '#ff4444'; // цвет завершения
+		}
+	}, interval);
+
+	return { bar, timer }; // для остановки при необходимости
+}
