@@ -3,7 +3,7 @@
 // @description  Для Лепрозория. Взат здесь: https://github.com/lynxtaa/Lepro-Total-Comments и чутка допилен
 // @author       lynxtaa, mankey-ru
 // @namespace    mankey-ru/lyrics-clean-print
-// @version      1.6.1
+// @version      1.61
 // @match        http://leprosorium.ru/comments/*
 // @match        http://*.leprosorium.ru/comments/*
 // @match        http*://leprosorium.ru/comments/*
