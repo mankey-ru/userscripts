@@ -3,7 +3,7 @@
 // @description  Для Лепрозория. Взат здесь: https://github.com/lynxtaa/Lepro-Total-Comments и чутка допилен
 // @author       lynxtaa, mankey-ru
 // @namespace    mankey-ru/lyrics-clean-print
-// @version      1.52
+// @version      1.6.1
 // @match        http://leprosorium.ru/comments/*
 // @match        http://*.leprosorium.ru/comments/*
 // @match        http*://leprosorium.ru/comments/*
@@ -15,7 +15,7 @@
 // ==/UserScript==
 
 var BEST_TRESHOLD = 0.75, // Порог рейтинга, можно поиграться со значением
-	std_dev;
+	hideComments = parseComments;
 
 var all = document.createElement('a'),
 	best = document.createElement('a'),
@@ -40,18 +40,12 @@ best.addEventListener(
 	function (e) {
 		e.preventDefault();
 
-		if (this.className === 'active') {
-			return false;
-		}
+		if (this.className == 'active') return false;
 
 		this.className = 'active';
 		this.nextSibling.className = '';
 
-		if (std_dev) {
-			document.body.appendChild(style);
-		} else {
-			parseComments();
-		}
+		hideComments();
 	},
 	false,
 );
@@ -62,11 +56,12 @@ all.addEventListener(
 	function (e) {
 		e.preventDefault();
 
-		if (std_dev && this.className !== 'active') {
-			this.className = 'active';
-			this.previousSibling.className = '';
-			document.body.removeChild(style);
-		}
+		if (hideComments == parseComments) return false;
+
+		this.className = 'active';
+		this.previousSibling.className = '';
+
+		document.body.removeChild(style);
 	},
 	false,
 );
@@ -92,7 +87,11 @@ function parseComments() {
 
 	if (!abovenull) return null;
 
-	std_dev = Math.sqrt(rating_square_sum / abovenull - Math.pow(rating_sum / abovenull, 2));
+	var std_dev = Math.sqrt(rating_square_sum / abovenull - Math.pow(rating_sum / abovenull, 2));
+
+	hideComments = function () {
+		document.body.appendChild(style);
+	};
 
 	for (var i = ratings.length; i--; ) {
 		if (ratings[i].rating / std_dev >= BEST_TRESHOLD) continue;
