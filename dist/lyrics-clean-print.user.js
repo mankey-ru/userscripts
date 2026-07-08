@@ -3,8 +3,9 @@
 // @description  Adds Clean button to make lyrics page print-ready. Supports Genius.com
 // @author       mankey-ru
 // @namespace    mankey-ru/lyrics-clean-print
-// @version      1.0.6
+// @version      1.0.7
 // @match        https://genius.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=genius.com
 // @grant        none
 // @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/lyrics-clean-print.user.js
 // @run-at       document-end

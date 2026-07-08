@@ -3,8 +3,9 @@
 // @description  Automatically presses Ring button in Andoid Find Hub
 // @author       mankey-ru
 // @namespace    mankey-ru/ring-my-droid
-// @version      1.0.6
+// @version      1.0.7
 // @match        https://www.google.com/android/find*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=android.com
 // @grant        none
 // @updateURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/ring-my-droid.user.js
 // ==/UserScript==
