@@ -3,7 +3,7 @@
 // @description  Adds Clean button to make lyrics page print-ready. Supports Genius.com
 // @author       mankey-ru
 // @namespace    mankey-ru/lyrics-clean-print
-// @version      1.0.7
+// @version      1.0.8
 // @match        https://genius.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=genius.com
 // @grant        none
@@ -208,6 +208,11 @@ function createStyle (mode = 'EASY') {
 	document.head.appendChild(style);
 }
 
+/**
+ * 
+ * @param {Element} lyricsEl 
+ * @returns {string}
+ */
 function getCleanedLyricsHTML(lyricsEl) {
 	let cleanedLyricsHTML = lyricsEl.innerHTML;
 
@@ -256,6 +261,7 @@ function createButton (text = 'текст не указан', onClick = () => al
 }
 
 
+// @ts-expect-error
 function log (...args) {
 	if (logFlag)
 		console.log(`[${projName}]`, ...args);
