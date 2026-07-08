@@ -3,7 +3,7 @@
 // @description  Для Лепрозория. Взат здесь: https://github.com/lynxtaa/Lepro-Total-Comments и чутка допилен
 // @author       lynxtaa, mankey-ru
 // @namespace    mankey-ru/lepro-total-comments
-// @version      1.63
+// @version      1.64
 // @match        http://leprosorium.ru/comments/*
 // @match        http://*.leprosorium.ru/comments/*
 // @match        http*://leprosorium.ru/comments/*
@@ -11,7 +11,7 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=leprosorium.ru
 // @copyright    2016, lynxtaa
 // @grant        none
-// @downloadURL  https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/lepro-total-comments.js
+// @downloadURL  https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/lepro-total-comments.user.js
 // ==/UserScript==
 
 var BEST_TRESHOLD = 0.75, // Порог рейтинга, можно поиграться со значением
