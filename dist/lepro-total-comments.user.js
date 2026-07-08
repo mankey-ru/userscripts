@@ -2,8 +2,8 @@
 // @name         [Lepro] Lepro Total Comments JS
 // @description  Для Лепрозория. Взат здесь: https://github.com/lynxtaa/Lepro-Total-Comments и чутка допилен
 // @author       lynxtaa, mankey-ru
-// @namespace    mankey-ru/lyrics-clean-print
-// @version      1.61
+// @namespace    mankey-ru/lepro-total-comments
+// @version      1.62
 // @match        http://leprosorium.ru/comments/*
 // @match        http://*.leprosorium.ru/comments/*
 // @match        http*://leprosorium.ru/comments/*
