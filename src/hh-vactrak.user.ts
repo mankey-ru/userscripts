@@ -42,7 +42,7 @@ class VacTrak {
 
 		const nextDelay = baseMs + jitterMs;
 
-		topScreenProgressBar(nextDelay); // запускаем прогресс бар сверху экрана
+		this.topScreenProgressBar(nextDelay); // запускаем прогресс бар сверху экрана
 
 		this.log(
 			`Следующая перезагрузка через ${(nextDelay / 1000).toFixed(1)} сек (jitter ${jitterMs} мс)`,
@@ -155,7 +155,7 @@ Key is "${this.vacMemKey}"`);
 			GM_notification({
 				title: `Новые вакансии!`,
 				text: `${newVacsNames.join(';\n')}`,
-				timeout: 60 * 60 * 1000,
+				// timeout: 60 * 60 * 1000,
 				highlight: true,
 				onclick: (evt) => {
 					// @ts-expect-error
@@ -213,6 +213,47 @@ Key is "${this.vacMemKey}"`);
 		localStorage.removeItem(this.vacMemKey);
 		window.location.reload();
 	}
+	topScreenProgressBar(durationMs = 60000, color = '#00ff00') {
+		let bar = document.getElementById('progress-bar-top');
+
+		// Создаём элемент, если его нет
+		if (!bar) {
+			bar = document.createElement('div');
+			bar.id = 'progress-bar-top';
+			bar.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 3px;
+                background: ${color};
+                width: 0%;
+                z-index: 999999;
+                transition: width 0.05s linear;
+                pointer-events: none;
+            `;
+			document.documentElement.appendChild(bar); // или document.body
+		}
+
+		// Сброс и запуск
+		bar.style.width = '0%';
+		bar.style.background = color;
+
+		const startTime = Date.now();
+		const interval = 50;
+
+		const timer = setInterval(() => {
+			const elapsed = Date.now() - startTime;
+			const progress = Math.min((elapsed / durationMs) * 100, 100);
+			bar.style.width = `${progress}%`;
+
+			if (progress >= 100) {
+				clearInterval(timer);
+				// bar.style.background = '#ff4444'; // цвет завершения
+			}
+		}, interval);
+
+		return { bar, timer }; // для остановки при необходимости
+	}
 }
 
 if (
@@ -224,119 +265,7 @@ if (
 }
 new VacTrak().run();
 
-/**
- * Запускает progress bar сверху экрана на 60 секунд
- * @param {number} durationMs - длительность в мс (по умолчанию 60000)
- * @param {string} color - цвет бара (по умолчанию #00ff00)
- */
-function topScreenProgressBar(durationMs = 60000, color = '#00ff00') {
-	let bar = document.getElementById('progress-bar-top');
-
-	// Создаём элемент, если его нет
-	if (!bar) {
-		bar = document.createElement('div');
-		bar.id = 'progress-bar-top';
-		bar.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                height: 2px;
-                background: ${color};
-                width: 0%;
-                z-index: 999999;
-                transition: width 0.05s linear;
-                pointer-events: none;
-            `;
-		document.documentElement.appendChild(bar); // или document.body
-	}
-
-	// Сброс и запуск
-	bar.style.width = '0%';
-	bar.style.background = color;
-
-	const startTime = Date.now();
-	const interval = 50;
-
-	const timer = setInterval(() => {
-		const elapsed = Date.now() - startTime;
-		const progress = Math.min((elapsed / durationMs) * 100, 100);
-		bar.style.width = `${progress}%`;
-
-		if (progress >= 100) {
-			clearInterval(timer);
-			// bar.style.background = '#ff4444'; // цвет завершения
-		}
-	}, interval);
-
-	return { bar, timer }; // для остановки при необходимости
-}
-
-/**
- * Options object for the GM_notification function.
- * @typedef {Object} GMNotificationOptions
- * @property {string} text - The main body text of the notification.
- * @property {string} [title] - The title of the notification.
- * @property {string} [image] - URL of an image/icon to display in the notification.
- * @property {boolean} [highlight] - Whether to highlight the tab that sent the notification (defaults to false).
- * @property {boolean} [silent] - Whether to play no sound (defaults to false).
- * @property {number} [timeout] - Time in milliseconds after which the notification automatically closes.
- * @property {function} [onclick] - Callback function triggered when the user clicks on the notification.
- * @property {function} [ondone] - Callback function triggered when the notification is closed (either by timeout or user).
- */
-
-/**
- * Displays a desktop notification to the user.
- * @global
- * @function GM_notification
- * @param {GMNotificationOptions|string} details - The notification options object, or the main text string.
- * @param {string} [title] - The title of the notification (only used if the first param is a string).
- * @param {string} [image] - URL of an icon (only used if the first param is a string).
- * @param {function} [onclick] - Click callback (only used if the first param is a string).
- * @returns {void}
- */
-
-/**
- * Опции открытия новой вкладки (современный API)
- * @typedef {Object} GMOpenTabOptions
- * @property {boolean}  [active=false] - сделать новую вкладку активной (выбранной)
- * @property {boolean|number} [insert=false] - вставить вкладку рядом с текущей
- *     - `true` - сразу после текущей вкладки
- *     - число - конкретная позиция
- * @property {boolean}  [setParent=false] - установить текущую вкладку как `opener` для новой
- * @property {boolean}  [incognito] - открыть в приватном/инкогнито режиме (если поддерживается браузером)
- */
-
-/**
- * Объект вкладки, возвращаемый GM_openInTab
- * @typedef {Object} GMOpenTabObject
- * @property {function(): void} close           - программно закрыть вкладку
- * @property {boolean}          closed          - `true`, если вкладка уже закрыта
- * @property {(cb?: () => void) => void} onclose
- *     - установить обработчик закрытия вкладки.
- *     Можно назначать как свойство: `tab.onclose = () => { ... }`
- */
-
-/**
- * Открывает указанный URL в новой вкладке браузера.
- *
- * @param {string} url - адрес, который нужно открыть
- * @param {GMOpenTabOptions} [options] - настройки открытия вкладки
- * @returns {GMOpenTabObject} - объект управления вкладкой
- *
- * @example
- * const tab = GM_openInTab("https://example.com", {
- *     active: true,
- *     insert: true,
- *     setParent: true
- * });
- *
- * tab.onclose = () => {
- *     console.log("Вкладка была закрыта пользователем");
- * };
- *
- * // позже можно закрыть принудительно
- * // tab.close();
- */
+/** Запускает progress bar сверху экрана */
 
 /** ID вакансии в виде строки, которая может быть использована как ключ в объекте */
 type VacIdString = `${number}`;
@@ -363,31 +292,22 @@ export interface GMNotificationClickEvent {
 export interface GMNotificationDetails {
 	/** Текст уведомления */
 	text: string;
-
 	/** Заголовок */
 	title?: string;
-
 	/** URL изображения */
 	image?: string;
-
 	/** Тег для обновления существующего уведомления */
 	tag?: string;
-
 	/** Время в миллисекундах до автоматического закрытия (0 или undefined = бесконечно) */
 	timeout?: number;
-
 	/** URL, который открывается при клике (можно отменить через preventDefault) */
 	url?: string;
-
 	/** Выделить вкладку при показе уведомления */
 	highlight?: boolean;
-
 	/** Не воспроизводить звук */
 	silent?: boolean;
-
 	/** Обработчик клика по уведомлению */
 	onclick?: (event: GMNotificationClickEvent) => void;
-
 	/** Вызывается при закрытии уведомления (таймаут, клик или highlight вкладки) */
 	ondone?: () => void;
 }
@@ -395,8 +315,7 @@ export interface GMNotificationDetails {
 /** Современный вызов GM_notification */
 declare function GM_notification(details: GMNotificationDetails, ondone?: () => void): void;
 
-// ====================== GM_openInTab (обновлённый) ======================
-
+// ====================== GM_openInTab ======================
 export interface GMOpenTabOptions {
 	active?: boolean;
 	insert?: boolean | number;
