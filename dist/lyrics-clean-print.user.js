@@ -11,112 +11,77 @@
 // @run-at       document-end
 // ==/UserScript==
 
-const projName = 'LCP';
 
-// @ts-check
-const logFlag = 1;
-let colCount = 1;
-init();
-
-// https://genius.com/25231723
-// https://genius.com/Shlyapa-shalyapina-psychotherapy-lyrics
-// https://genius.com/Slipknot-gently-original-version-lyrics
-// https://genius.com/Electribe-101-talking-with-myself-lyrics
-// https://genius.com/Rammstein-laichzeit-lyrics
-// https://genius.com/Jane-birkin-pour-un-flirt-avec-toi-lyrics
-// https://genius.com/Kiska-pesdineation-lyrics
-// https://genius.com/Olga-arefieva-and-kovcheg-nogin-square-lyrics - тут теряется последняя часть! терялась
-
-
-function init () {
-	if (window.self !== window.top) return; // это в айфрейме, там такой плеер есть
-	log(`userScript loaded for document ${document.location.href}`);
-	createButton(`Clean: Easy`, () => { cleanPage('EASY'); });
-	createButton(`Clean: Hardcore`, () => { cleanPage('HARDCORE'); });
-}
-/**
- *
- * @param mode { 'EASY' | 'HARDCORE' }
- */
-function cleanPage (mode = 'EASY') {
-	log(`cleanPage mode=${mode}`);
-
-	// сразу удаляем подвал, там может быть айфрейм
-	//document.querySelector(`[class^="SongPage__BottomSticky"]`)?.remove?.();
-
-	const titleEl = document.querySelector('h1');
-	const artistEl = document.querySelector(`[class^="SongHeader-desktop__CreditList"]`);
-	const lyricsEls = document.querySelectorAll('[data-lyrics-container="true"]'); // lyricsElWrap?.querySelector?.('p') || lyricsElWrap; // иногда текст прям как есть
-
-	if (!titleEl) throw `${projName}: no titleEl`;
-	if (!artistEl) throw `${projName}: no artistEl`;
-	if (!lyricsEls.length) throw `${projName}: no lyricsEl`;
-
-	const songTitle = cleanTranslation(titleEl.textContent.trim());
-	const songArtist = cleanTranslation(artistEl.textContent.trim());
-
-	const artistFeatElAll = document.querySelector(`[class^="SongHeader-desktop__TwoColumnArtistContainer"]`)?.querySelectorAll?.('[class^="PortalTooltip__Container"]');
-	const artistFeatElFiltered = artistFeatElAll ? [...artistFeatElAll]?.filter?.(el => el.textContent?.trim()) : null;
-	const yearEl = document.querySelector('[class^="MetadataStats__Container"]')?.querySelector?.('[class^="LabelWithIcon__Label"]');
-	const artistFeatList = artistFeatElFiltered?.length ? artistFeatElFiltered.map(el => cleanTranslation(el.textContent.trim())).filter(artistFeatName => artistFeatName !== songArtist).join(', ') : ''; // дубли бывают в https://genius.com/Slipknot-gently-original-version-lyrics
-
-	const excludedElements = document.querySelectorAll(`[data-exclude-from-selection=true]`);
-	// @ts-expect-error
-	log(`excludedElements.innerText=`, Array.from(excludedElements).map(el => el.innerText.trim()).join(' | '));
-	excludedElements.forEach(el => el.remove());
-
-	const yearMatch = yearEl?.textContent?.match?.(/\b\d{4}\b/);
-	const songYear = yearMatch ? `${yearMatch[0]}` : '';
-
-	const cleanedLyricsHTML = Array.from(lyricsEls).map(el => getCleanedLyricsHTML(el)).join(`<!-- ${projName}: здесь разрыв -->`);;
-
-	// Clear the body
-	document.body.innerHTML = '';
-
-	// Create new content with artist name and multi-column lyrics
-
-	const lineQty = cleanedLyricsHTML.split('<br>').length;
-
-	const threshold1 = 20;
-	const threshold2 = 50;
-
-	// чтобы на 1 страницу помещалось
-	if (lineQty < threshold1) {
-		colCount = 1;
-	} else if (lineQty < threshold2) {
-		colCount = 2;
-	} else {
-		colCount = 3;
-	}
-
-	console.log(`lineQty=`, lineQty, `colCount=`, colCount, `threshold1=`, threshold1, `threshold2=`, threshold2);
-
-	const container = document.createElement('div');
-	container.id = 'clean-print-container';
-	container.style.padding = '20px';
-	container.innerHTML = `
+"use strict";
+(() => {
+  // src/lyrics-clean-print.user.ts
+  var projName = "LCP";
+  var logFlag = 1;
+  var colCount = 1;
+  init();
+  function init() {
+    if (window.self !== window.top) return;
+    log(`userScript loaded for document ${document.location.href}`);
+    createButton(`Clean: Easy`, () => {
+      cleanPage("EASY");
+    });
+    createButton(`Clean: Hardcore`, () => {
+      cleanPage("HARDCORE");
+    });
+  }
+  function cleanPage(mode = "EASY") {
+    log(`cleanPage mode=${mode}`);
+    const titleEl = document.querySelector("h1");
+    const artistEl = document.querySelector(`[class^="SongHeader-desktop__CreditList"]`);
+    const lyricsEls = document.querySelectorAll('[data-lyrics-container="true"]');
+    if (!titleEl) throw `${projName}: no titleEl`;
+    if (!artistEl) throw `${projName}: no artistEl`;
+    if (!lyricsEls.length) throw `${projName}: no lyricsEl`;
+    const songTitle = cleanTranslation(titleEl.textContent.trim());
+    const songArtist = cleanTranslation(artistEl.textContent.trim());
+    const artistFeatElAll = document.querySelector(`[class^="SongHeader-desktop__TwoColumnArtistContainer"]`)?.querySelectorAll?.('[class^="PortalTooltip__Container"]');
+    const artistFeatElFiltered = artistFeatElAll ? [...artistFeatElAll]?.filter?.((el) => el.textContent?.trim()) : null;
+    const yearEl = document.querySelector('[class^="MetadataStats__Container"]')?.querySelector?.('[class^="LabelWithIcon__Label"]');
+    const artistFeatList = artistFeatElFiltered?.length ? artistFeatElFiltered.map((el) => cleanTranslation(el.textContent.trim())).filter((artistFeatName) => artistFeatName !== songArtist).join(", ") : "";
+    const excludedElements = document.querySelectorAll(`[data-exclude-from-selection=true]`);
+    log(`excludedElements.innerText=`, Array.from(excludedElements).map((el) => el.innerText.trim()).join(" | "));
+    excludedElements.forEach((el) => el.remove());
+    const yearMatch = yearEl?.textContent?.match?.(/\b\d{4}\b/);
+    const songYear = yearMatch ? `${yearMatch[0]}` : "";
+    const cleanedLyricsHTML = Array.from(lyricsEls).map((el) => getCleanedLyricsHTML(el)).join(`<!-- ${projName}: \u0437\u0434\u0435\u0441\u044C \u0440\u0430\u0437\u0440\u044B\u0432 -->`);
+    ;
+    document.body.innerHTML = "";
+    const lineQty = cleanedLyricsHTML.split("<br>").length;
+    const threshold1 = 20;
+    const threshold2 = 50;
+    if (lineQty < threshold1) {
+      colCount = 1;
+    } else if (lineQty < threshold2) {
+      colCount = 2;
+    } else {
+      colCount = 3;
+    }
+    console.log(`lineQty=`, lineQty, `colCount=`, colCount, `threshold1=`, threshold1, `threshold2=`, threshold2);
+    const container = document.createElement("div");
+    container.id = "clean-print-container";
+    container.style.padding = "20px";
+    container.innerHTML = `
             <div class="lyr-header">
 				<span class="lyr-songNameFull">
 					<span class="lyr-year">${songYear}</span>
-					<span class="lyr-artist">${songArtist}</span> — <span class="lyr-title">${songTitle}</span>
+					<span class="lyr-artist">${songArtist}</span> \u2014 <span class="lyr-title">${songTitle}</span>
 				</span>
 				<span class="lyr-featArtist">${artistFeatList}</span>
 			</div>
             <div class="lyr-container">${cleanedLyricsHTML}</div>
         `;
-
-	document.body.appendChild(container);
-	createStyle(mode);
-}
-
-/**
- * @param mode { 'EASY' | 'HARDCORE' }
- */
-function createStyle (mode = 'EASY') {
-	// CSS Reset and Multi-column support with serif font
-	const style = document.createElement('style');
-	const isEasy = mode === 'EASY';
-	style.textContent = `
+    document.body.appendChild(container);
+    createStyle(mode);
+  }
+  function createStyle(mode = "EASY") {
+    const style = document.createElement("style");
+    const isEasy = mode === "EASY";
+    style.textContent = `
             /* Global CSS Reset */
             * {
                 margin: 0;
@@ -151,7 +116,7 @@ function createStyle (mode = 'EASY') {
 				display: none;
 			}
 			.lyr-subdiv::before {
-				content: '⭐';
+				content: '\u2B50';
 				margin-right: 5px;
 			}
 			.lyr-subdiv {
@@ -186,7 +151,7 @@ function createStyle (mode = 'EASY') {
 				display: none;
 			}
 			.lyr-featArtist::before {
-				content: '🎤';
+				content: '\u{1F3A4}';
 				margin-right: 5px;
 			}
 
@@ -205,80 +170,47 @@ function createStyle (mode = 'EASY') {
 				line-height: 1.2;
             }
         `;
-	document.head.appendChild(style);
-}
-
-/**
- * 
- * @param {Element} lyricsEl 
- * @returns {string}
- */
-function getCleanedLyricsHTML(lyricsEl) {
-	let cleanedLyricsHTML = lyricsEl.innerHTML;
-
-	// Заменяем все ссылки на тупо их текст
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/<a[^>]*>(.*?)<\/a>/gis, '$1');
-	// Заменяем все спаны на тупо их текст
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/<span[^>]*>(.*?)<\/span>/gis, '$1');
-	// Заменяем все i на тупо их текст
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/<i[^>]*>(.*?)<\/i>/gis, '$1');
-
-	// Бьём на абзацы
-	cleanedLyricsHTML = cleanedLyricsHTML.split(/<br\s*\/?>\s*<br\s*\/?>/gi).map(part => `<p class="lyr-par">${part.trim()}</p>`).join('');
-
-	// часто есть такая отдельная фраза хз зачем. Если после звездочки сунуть ? то будет non-greedy
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, '');
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, '');
-	cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, '');
-
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[(.*?)\]<br\s*\/?>/gis, '<span class="lyr-subdiv">$1</span>');
-
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, ' ');
-	//cleanedLyricsHTML = cleanedLyricsHTML.replace(/(<br\s*\/?>\s*)+/gi, '<br>');
-	return cleanedLyricsHTML;
-}
-
-
-function createButton (text = 'текст не указан', onClick = () => alert('onClick не указан')) {
-	// Create floating button
-	const button = document.createElement('button');
-	button.textContent = text;
-	button.style.position = 'fixed';
-	button.style.top = '4em';
-	button.style.cursor = 'pointer';
-	button.style.right = '1em';
-	button.style.zIndex = '9999';
-	button.style.padding = '10px 15px';
-	button.style.backgroundColor = '#06fa27ff';
-	button.style.color = '#000';
-	button.style.border = '.8em solid #000';
-	button.style.borderRadius = '23px';
-	button.style.cursor = 'pointer';
-	button.style.fontSize = '18px';
-	button.style.fontFamily = 'Arial, sans-serif';
-	button.addEventListener('click', onClick);
-	document.body.appendChild(button);
-}
-
-
-// @ts-expect-error
-function log (...args) {
-	if (logFlag)
-		console.log(`[${projName}]`, ...args);
-}
-
-/**
- * Удаление перевода кототорый джениус суёт русским артистам типа `Игорь Жирнов (Igor Zhirnov)`
- * @param {string} str */
-function cleanTranslation (str) {
-	const cyrillicWithEnglishParensRegex = /^([А-Яа-яеЁ\s]+)\s+\([A-Za-z\s]+\)$/;
-	// If matches, return only the Cyrillic part (group 1); else return original
-	const match = str.match(cyrillicWithEnglishParensRegex);
-	return match ? match[1].trim() : str;
-}
-
-/* console.log(cleanTranslation("Проститутка (Prostitute)"));  // Output: "Проститутка"
-console.log(cleanTranslation("Слово (Word)"));  // Output: "Слово"
-console.log(cleanTranslation("English (Text)"));  // Output: "English (Text)" (no Cyrillic main part)
-console.log(cleanTranslation("Русский (русский)"));  // Output: "Русский (русский)" (Cyrillic in parens, unchanged)
-console.log(cleanTranslation("Normal string"));  // Output: "Normal string" (no parens) */
+    document.head.appendChild(style);
+  }
+  function getCleanedLyricsHTML(lyricsEl) {
+    let cleanedLyricsHTML = lyricsEl.innerHTML;
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<a[^>]*>(.*?)<\/a>/gis, "$1");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<span[^>]*>(.*?)<\/span>/gis, "$1");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<i[^>]*>(.*?)<\/i>/gis, "$1");
+    cleanedLyricsHTML = cleanedLyricsHTML.split(/<br\s*\/?>\s*<br\s*\/?>/gi).map((part) => `<p class="lyr-par">${part.trim()}</p>`).join("");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, "");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, "");
+    cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, "");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[(.*?)\]<br\s*\/?>/gis, '<span class="lyr-subdiv">$1</span>');
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, " ");
+    return cleanedLyricsHTML;
+  }
+  function createButton(text = "\u0442\u0435\u043A\u0441\u0442 \u043D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D", onClick = () => alert("onClick \u043D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D")) {
+    const button = document.createElement("button");
+    button.textContent = text;
+    button.style.position = "fixed";
+    button.style.top = "4em";
+    button.style.cursor = "pointer";
+    button.style.right = "1em";
+    button.style.zIndex = "9999";
+    button.style.padding = "10px 15px";
+    button.style.backgroundColor = "#06fa27ff";
+    button.style.color = "#000";
+    button.style.border = ".8em solid #000";
+    button.style.borderRadius = "23px";
+    button.style.cursor = "pointer";
+    button.style.fontSize = "18px";
+    button.style.fontFamily = "Arial, sans-serif";
+    button.addEventListener("click", onClick);
+    document.body.appendChild(button);
+  }
+  function log(...args) {
+    if (logFlag)
+      console.log(`[${projName}]`, ...args);
+  }
+  function cleanTranslation(str) {
+    const cyrillicWithEnglishParensRegex = /^([А-Яа-яеЁ\s]+)\s+\([A-Za-z\s]+\)$/;
+    const match = str.match(cyrillicWithEnglishParensRegex);
+    return match ? match[1].trim() : str;
+  }
+})();

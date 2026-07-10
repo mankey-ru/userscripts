@@ -1,8 +1,12 @@
 name: Compile dist/*.ts
+
 on:
   push:
     paths:
-      - 'src/*.ts'
+      - 'src/**' # ← любой файл/папка внутри src
+  pull_request:
+    paths:
+      - 'src/**' # ← удобно тестировать PR
   workflow_dispatch:
 
 env:
@@ -16,16 +20,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # нужно для корректного git push
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm' # ускоряет install
 
       - name: Install dependencies
-        run: "npm ci"
+        run: npm ci --prefer-offline
 
-      - name: build dist/*.ts sources
+      - name: Build dist
         run: npm run build
 
       - name: Commit and push built files
@@ -34,10 +41,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add dist/*
+
           if git diff --staged --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "Build dist/*.ts sources"
+
+          git commit -m "Build dist/*.ts sources [skip ci]"
           git push

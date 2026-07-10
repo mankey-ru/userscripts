@@ -13,269 +13,189 @@
 // @downloadURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/hh-vactrak.user.js
 // ==/UserScript==
 
-class VacTrak {
-	constructor(vacMemKeyBase = 'vacMem') {
-		this.vacMemKey = `${vacMemKeyBase}__${window.location.search}`;
-	}
 
-	/** @type {string} @private */
-	static vacMemVersion = '1.1';
-	/** @type {number} @private */
-	static vacTrakIntervalMins = 3;
-	/** @type {number} @private */
-	static jitterSeconds = 5; // ±30 секунд fuzzing
+"use strict";
+(() => {
+  var __defProp = Object.defineProperty;
+  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 
-	// @ts-expect-error
-	static log = (...args) => {
-		console.log(`[VacTrak v${VacTrak.vacMemVersion}]`, ...args);
-	};
-
-	/**
-	 * Рекурсивный таймер с jitter
-	 * @private
-	 */
-	scheduleNextReload() {
-		const baseMs = 1000 * 60 * VacTrak.vacTrakIntervalMins;
-		const jitterMs =
-			Math.floor(Math.random() * (2 * VacTrak.jitterSeconds * 1000 + 1)) - VacTrak.jitterSeconds * 1000;
-
-		const nextDelay = baseMs + jitterMs;
-
-		topScreenProgressBar(nextDelay); // запускаем прогресс бар сверху экрана
-
-		VacTrak.log(`Следующая перезагрузка через ${(nextDelay / 1000).toFixed(1)} сек (jitter ${jitterMs} мс)`);
-
-		setTimeout(() => {
-			if (document.querySelector(`.chatik-integration_visible`)) {
-				VacTrak.log(`Chatik detected. Not reloading the page`);
-				this.scheduleNextReload(); // продолжаем таймер
-			} else {
-				VacTrak.log(`No new vacancies found. Reloading the page`);
-				window.location.reload();
-			}
-		}, nextDelay);
-	}
-
-	run() {
-		VacTrak.log(`
+  // src/hh-vactrak.user.ts
+  var VacTrak = class {
+    constructor() {
+      __publicField(this, "vacMemKeyBase", "vacMem");
+      __publicField(this, "vacMemKey", `${this.vacMemKeyBase}__${window.location.search}`);
+      /** @type {string} @private */
+      __publicField(this, "vacMemVersion", "1.1");
+      /** @type {number} @private */
+      __publicField(this, "vacTrakIntervalMins", 3);
+      /** @type {number} @private */
+      __publicField(this, "jitterSeconds", 5);
+      // ±30 секунд fuzzing
+      // @ts-expect-error
+      __publicField(this, "log", (...args) => {
+        console.log(`[VacTrak v${this.vacMemVersion}]`, ...args);
+      });
+    }
+    /**
+     * Рекурсивный таймер с jitter
+     * @private
+     */
+    scheduleNextReload() {
+      const baseMs = 1e3 * 60 * this.vacTrakIntervalMins;
+      const jitterMs = Math.floor(Math.random() * (2 * this.jitterSeconds * 1e3 + 1)) - this.jitterSeconds * 1e3;
+      const nextDelay = baseMs + jitterMs;
+      topScreenProgressBar(nextDelay);
+      this.log(
+        `\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F \u043F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0447\u0435\u0440\u0435\u0437 ${(nextDelay / 1e3).toFixed(1)} \u0441\u0435\u043A (jitter ${jitterMs} \u043C\u0441)`
+      );
+      setTimeout(() => {
+        if (document.querySelector(`.chatik-integration_visible`)) {
+          this.log(`Chatik detected. Not reloading the page`);
+          this.scheduleNextReload();
+        } else {
+          this.log(`No new vacancies found. Reloading the page`);
+          window.location.reload();
+        }
+      }, nextDelay);
+    }
+    run() {
+      this.log(`
 Loaded.
-Next check in: ${VacTrak.vacTrakIntervalMins} minute(s) ± ${VacTrak.jitterSeconds} sec jitter. 
+Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter. 
 Key is "${this.vacMemKey}"`);
-
-		// @ts-expect-error
-		unsafeWindow.vacTrak = this;
-
-		if (this.getNewVacs().length) {
-			this.processNewVacs();
-		}
-
-		this.cleanOutdatedVacs();
-
-		// Запускаем первый таймер с jitter
-		this.scheduleNextReload();
-	}
-
-	// @ts-expect-error
-	static log = (...args) => {
-		console.log(`[VacTrak v${VacTrak.vacMemVersion}]`, ...args);
-	};
-
-	/**
-	 * ISO 8601 строка в формате, который возвращает `new Date().toISOString()`
-	 * Пример: "2026-07-08T13:24:56.789Z"
-	 * @typedef {`${number}${number}${number}${number}-${number}${number}-${number}${number}T${number}${number}:${number}${number}:${number}${number}.${number}${number}${number}Z`} IsoDateTimeString
-	 *
-	 * ID вакансии в виде строки, которая может быть использована как ключ в объекте
-	 * Пример: "12345678"
-	 * @typedef {`${number}`} VacIdString
-	 *
-	 * Запись в localStorage id вакансии : дата сохранения
-	 * Пример: "2026-07-08T13:24:56.789Z"
-	 * @typedef {Record<VacIdString, IsoDateTimeString>} VacMem
-	 */
-
-	/**
-	 * Получить все id вакансий на текущей странице
-	 * @returns {VacIdString[]}
-	 * @private
-	 */
-	getVacIdsOnPage() {
-		return Array.from(document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`))
-			.map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id)
-			.filter((id) => !!id && this.isVacIdString(id));
-	}
-
-	/**
-	 * @param {string} id
-	 * @returns {id is VacIdString}
-	 * @private
-	 */
-	isVacIdString(id) {
-		return /^\d+$/.test(id);
-	}
-
-	/**
-	 * Получить новые вакансии, которых нет в localStorage
-	 * @returns {VacIdString[]}
-	 * @private
-	 */
-	getNewVacs() {
-		const vacMem = this.getVacMem();
-		const vacIdsOnPage = this.getVacIdsOnPage();
-		const newVacs = vacIdsOnPage.filter((id) => !vacMem[id]);
-		return newVacs;
-	}
-
-	/**
-	 * Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление
-	 * @returns {boolean} true если были новые вакансии, false если нет
-	 * @private
-	 */
-	processNewVacs() {
-		const newVacs = this.getNewVacs();
-		const vacMem = this.getVacMem();
-		/** @type {string[]} */
-		let newVacsNames = [];
-		if (newVacs.length) {
-			// сортируем
-			// Object.entries(vacMem).sort(([, a], [, b]) => new Date(a) - new Date(b))
-			newVacs.forEach((vacId) => {
-				vacMem[vacId] = /** @type {IsoDateTimeString} */ (new Date().toISOString());
-				const vacEl = document.getElementById(vacId);
-				if (vacEl) {
-					vacEl.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
-					const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-					if (vacNameEl) {
-						newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
-					}
-				}
-			});
-			// Notification.requestPermission().then((permission) => {
-			// 	if (permission === 'granted') {
-			// 		new Notification(`Новые вакансии:\n${newVacsNames.join(';\n')}`);
-			// 	}
-			// }
-
-			// @ts-expect-error
-			GM_notification({
-				title: `Новые вакансии!`,
-				text: `${newVacsNames.join(';\n')}`,
-				timeout: 60 * 60 * 1000,
-				highlight: true,
-				// @ts-expect-error
-				onclick: (...args) => {
-					console.log(...args);
-					window.focus();
-					// шаблон ссылки вакансии: `https://hh.ru/vacancy/${vacId}`
-				},
-			});
-			this.setVacMem(vacMem);
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Удаляет из localStorage вакансии, которых нет на текущей странице
-	 * @private
-	 */
-	cleanOutdatedVacs() {
-		const vacMem = this.getVacMem();
-		const vacIdsOnPage = this.getVacIdsOnPage();
-		for (const vacId in vacMem) {
-			// @ts-expect-error
-			if (!vacIdsOnPage.includes(vacId)) {
-				// @ts-expect-error
-				delete vacMem[vacId];
-			}
-		}
-		this.setVacMem(vacMem);
-	}
-
-	/**
-	 * Получить память о вакансиях
-	 * Возвращает объект, где ключи - это id вакансий, а значения - это дата публикации вакансии в формате ISO 8601 (не всякая, а та что возвращается toIsoString())
-	 * @returns Record<`${number}`, IsoDateTimeString>
-	 * @private
-	 */
-	getVacMem() {
-		const stored = localStorage.getItem(this.vacMemKey);
-
-		if (!stored) {
-			return {};
-		}
-
-		try {
-			const parsed = JSON.parse(stored);
-
-			// Опционально: runtime проверка структуры
-			if (typeof parsed !== 'object' || parsed === null) {
-				return {};
-			}
-
-			return /** @type {VacMem} */ (parsed);
-		} catch (e) {
-			console.warn('Не удалось распарсить VacMem из localStorage', e);
-			return {};
-		}
-	}
-	/** Запомнить вакансии в localStorage
-	 * @param {VacMem} vacMem
-	 * @private
-	 */
-	setVacMem(vacMem) {
-		localStorage.setItem(this.vacMemKey, JSON.stringify(vacMem));
-	}
-	/** Очистить вакансии в localStorage */
-	clearVacMem() {
-		localStorage.removeItem(this.vacMemKey);
-		window.location.reload();
-	}
-}
-
-
-if (document.body.innerHTML.includes('<p><b>502 - Bad Gateway .</b> <ins>That’s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That’s all we know.</ins></p>')) {
-	window.location.reload();
-}
-new VacTrak().run();
-
-/**
- * Options object for the GM_notification function.
- * @typedef {Object} GMNotificationOptions
- * @property {string} text - The main body text of the notification.
- * @property {string} [title] - The title of the notification.
- * @property {string} [image] - URL of an image/icon to display in the notification.
- * @property {boolean} [highlight] - Whether to highlight the tab that sent the notification (defaults to false).
- * @property {boolean} [silent] - Whether to play no sound (defaults to false).
- * @property {number} [timeout] - Time in milliseconds after which the notification automatically closes.
- * @property {function} [onclick] - Callback function triggered when the user clicks on the notification.
- * @property {function} [ondone] - Callback function triggered when the notification is closed (either by timeout or user).
- */
-
-/**
- * Displays a desktop notification to the user.
- * @global
- * @function GM_notification
- * @param {GMNotificationOptions|string} details - The notification options object, or the main text string.
- * @param {string} [title] - The title of the notification (only used if the first param is a string).
- * @param {string} [image] - URL of an icon (only used if the first param is a string).
- * @param {function} [onclick] - Click callback (only used if the first param is a string).
- * @returns {void}
- */
-
-/**
- * Запускает progress bar сверху экрана на 60 секунд
- * @param {number} durationMs - длительность в мс (по умолчанию 60000)
- * @param {string} color - цвет бара (по умолчанию #00ff00)
- */
-function topScreenProgressBar(durationMs = 60000, color = '#00ff00') {
-	let bar = document.getElementById('progress-bar-top');
-
-	// Создаём элемент, если его нет
-	if (!bar) {
-		bar = document.createElement('div');
-		bar.id = 'progress-bar-top';
-		bar.style.cssText = `
+      unsafeWindow.vacTrak = this;
+      if (this.getNewVacs().length) {
+        this.processNewVacs();
+      }
+      this.cleanOutdatedVacs();
+      this.scheduleNextReload();
+    }
+    /**
+     * ISO 8601 строка в формате, который возвращает `new Date().toISOString()`
+     * Пример: "2026-07-08T13:24:56.789Z"
+     * @typedef {`${number}${number}${number}${number}-${number}${number}-${number}${number}T${number}${number}:${number}${number}:${number}${number}.${number}${number}${number}Z`} IsoDateTimeString
+     *
+     * ID вакансии в виде строки, которая может быть использована как ключ в объекте
+     * Пример: "12345678"
+     * @typedef {`${number}`} VacIdString
+     *
+     * Запись в localStorage id вакансии : дата сохранения
+     * Пример: "2026-07-08T13:24:56.789Z"
+     * @typedef {Record<VacIdString, IsoDateTimeString>} VacMem
+     */
+    /**
+     * Получить все id вакансий на текущей странице
+     * @returns {VacIdString[]}
+     * @private
+     */
+    getVacIdsOnPage() {
+      return Array.from(document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`)).map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id).filter((id) => !!id && this.isVacIdString(id));
+    }
+    /**
+     * @param {string} id
+     * @returns {id is VacIdString}
+     * @private
+     */
+    isVacIdString(id) {
+      return /^\d+$/.test(id);
+    }
+    /**
+     * Получить новые вакансии, которых нет в localStorage
+     * @returns {VacIdString[]}
+     * @private
+     */
+    getNewVacs() {
+      const vacMem = this.getVacMem();
+      const vacIdsOnPage = this.getVacIdsOnPage();
+      const newVacs = vacIdsOnPage.filter((id) => !vacMem[id]);
+      return newVacs;
+    }
+    /**
+     * Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление
+     * @returns {boolean} true если были новые вакансии, false если нет
+     */
+    processNewVacs() {
+      const newVacs = this.getNewVacs();
+      const vacMem = this.getVacMem();
+      let newVacsNames = [];
+      if (newVacs.length) {
+        newVacs.forEach((vacId) => {
+          vacMem[vacId] = (/* @__PURE__ */ new Date()).toISOString();
+          const vacEl = document.getElementById(vacId);
+          if (vacEl) {
+            vacEl.style.backgroundColor = "rgba(255, 255, 0, 0.2)";
+            const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
+            if (vacNameEl) {
+              newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
+            }
+          }
+        });
+        GM_notification({
+          title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438!`,
+          text: `${newVacsNames.join(";\n")}`,
+          timeout: 60 * 60 * 1e3,
+          highlight: true,
+          onclick: (evt) => {
+            unsafeWindow.focus();
+            GM_openInTab(window.location.href, { active: true });
+          }
+        });
+        this.setVacMem(vacMem);
+        return true;
+      }
+      return false;
+    }
+    /** Удаляет из localStorage вакансии, которых нет на текущей странице */
+    cleanOutdatedVacs() {
+      const vacMem = this.getVacMem();
+      const vacIdsOnPage = this.getVacIdsOnPage();
+      for (const vacId in vacMem) {
+        if (this.isVacIdString(vacId) && !vacIdsOnPage.includes(vacId)) {
+          delete vacMem[vacId];
+        }
+      }
+      this.setVacMem(vacMem);
+    }
+    /** Получить память о вакансиях */
+    getVacMem() {
+      const stored = localStorage.getItem(this.vacMemKey);
+      if (!stored) {
+        return {};
+      }
+      try {
+        const parsed = JSON.parse(stored);
+        if (typeof parsed !== "object" || parsed === null) {
+          return {};
+        }
+        return parsed;
+      } catch (e) {
+        console.warn("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0441\u043F\u0430\u0440\u0441\u0438\u0442\u044C VacMem \u0438\u0437 localStorage", e);
+        return {};
+      }
+    }
+    /** Запомнить вакансии в localStorage */
+    setVacMem(vacMem) {
+      localStorage.setItem(this.vacMemKey, JSON.stringify(vacMem));
+    }
+    /** Очистить вакансии 	orage */
+    clearVacMem() {
+      localStorage.removeItem(this.vacMemKey);
+      window.location.reload();
+    }
+  };
+  if (document.body.innerHTML.includes(
+    "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
+  )) {
+    window.location.reload();
+  }
+  new VacTrak().run();
+  function topScreenProgressBar(durationMs = 6e4, color = "#00ff00") {
+    let bar = document.getElementById("progress-bar-top");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "progress-bar-top";
+      bar.style.cssText = `
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -286,26 +206,20 @@ function topScreenProgressBar(durationMs = 60000, color = '#00ff00') {
                 transition: width 0.05s linear;
                 pointer-events: none;
             `;
-		document.documentElement.appendChild(bar); // или document.body
-	}
-
-	// Сброс и запуск
-	bar.style.width = '0%';
-	bar.style.background = color;
-
-	const startTime = Date.now();
-	const interval = 50;
-
-	const timer = setInterval(() => {
-		const elapsed = Date.now() - startTime;
-		const progress = Math.min((elapsed / durationMs) * 100, 100);
-		bar.style.width = `${progress}%`;
-
-		if (progress >= 100) {
-			clearInterval(timer);
-			// bar.style.background = '#ff4444'; // цвет завершения
-		}
-	}, interval);
-
-	return { bar, timer }; // для остановки при необходимости
-}
+      document.documentElement.appendChild(bar);
+    }
+    bar.style.width = "0%";
+    bar.style.background = color;
+    const startTime = Date.now();
+    const interval = 50;
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / durationMs * 100, 100);
+      bar.style.width = `${progress}%`;
+      if (progress >= 100) {
+        clearInterval(timer);
+      }
+    }, interval);
+    return { bar, timer };
+  }
+})();
