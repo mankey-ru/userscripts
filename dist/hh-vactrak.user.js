@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.67
+// @version      1.68
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -45,7 +45,7 @@
       const baseMs = 1e3 * 60 * this.vacTrakIntervalMins;
       const jitterMs = Math.floor(Math.random() * (2 * this.jitterSeconds * 1e3 + 1)) - this.jitterSeconds * 1e3;
       const nextDelay = baseMs + jitterMs;
-      topScreenProgressBar(nextDelay);
+      this.topScreenProgressBar(nextDelay);
       this.log(
         `\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F \u043F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0447\u0435\u0440\u0435\u0437 ${(nextDelay / 1e3).toFixed(1)} \u0441\u0435\u043A (jitter ${jitterMs} \u043C\u0441)`
       );
@@ -134,7 +134,7 @@ Key is "${this.vacMemKey}"`);
         GM_notification({
           title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438!`,
           text: `${newVacsNames.join(";\n")}`,
-          timeout: 60 * 60 * 1e3,
+          // timeout: 60 * 60 * 1000,
           highlight: true,
           onclick: (evt) => {
             unsafeWindow.focus();
@@ -183,6 +183,38 @@ Key is "${this.vacMemKey}"`);
       localStorage.removeItem(this.vacMemKey);
       window.location.reload();
     }
+    topScreenProgressBar(durationMs = 6e4, color = "#00ff00") {
+      let bar = document.getElementById("progress-bar-top");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "progress-bar-top";
+        bar.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 3px;
+                background: ${color};
+                width: 0%;
+                z-index: 999999;
+                transition: width 0.05s linear;
+                pointer-events: none;
+            `;
+        document.documentElement.appendChild(bar);
+      }
+      bar.style.width = "0%";
+      bar.style.background = color;
+      const startTime = Date.now();
+      const interval = 50;
+      const timer = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / durationMs * 100, 100);
+        bar.style.width = `${progress}%`;
+        if (progress >= 100) {
+          clearInterval(timer);
+        }
+      }, interval);
+      return { bar, timer };
+    }
   };
   if (document.body.innerHTML.includes(
     "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
@@ -190,36 +222,4 @@ Key is "${this.vacMemKey}"`);
     window.location.reload();
   }
   new VacTrak().run();
-  function topScreenProgressBar(durationMs = 6e4, color = "#00ff00") {
-    let bar = document.getElementById("progress-bar-top");
-    if (!bar) {
-      bar = document.createElement("div");
-      bar.id = "progress-bar-top";
-      bar.style.cssText = `
-                position: fixed;
-                top: 0;
-                left: 0;
-                height: 2px;
-                background: ${color};
-                width: 0%;
-                z-index: 999999;
-                transition: width 0.05s linear;
-                pointer-events: none;
-            `;
-      document.documentElement.appendChild(bar);
-    }
-    bar.style.width = "0%";
-    bar.style.background = color;
-    const startTime = Date.now();
-    const interval = 50;
-    const timer = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / durationMs * 100, 100);
-      bar.style.width = `${progress}%`;
-      if (progress >= 100) {
-        clearInterval(timer);
-      }
-    }, interval);
-    return { bar, timer };
-  }
 })();
