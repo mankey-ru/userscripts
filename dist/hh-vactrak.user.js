@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.68
+// @version      1.69
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -52,6 +52,9 @@
       setTimeout(() => {
         if (document.querySelector(`.chatik-integration_visible`)) {
           this.log(`Chatik detected. Not reloading the page`);
+          this.scheduleNextReload();
+        } else if (this.getNewVacs().length) {
+          this.log(`New vacancies found. Not reloading the page`);
           this.scheduleNextReload();
         } else {
           this.log(`No new vacancies found. Reloading the page`);
@@ -118,8 +121,9 @@ Key is "${this.vacMemKey}"`);
     processNewVacs() {
       const newVacs = this.getNewVacs();
       const vacMem = this.getVacMem();
-      let newVacsNames = [];
       if (newVacs.length) {
+        const newVacsNames = [];
+        const newVacIds = newVacs.map((vacId) => vacId);
         newVacs.forEach((vacId) => {
           vacMem[vacId] = (/* @__PURE__ */ new Date()).toISOString();
           const vacEl = document.getElementById(vacId);
@@ -138,7 +142,10 @@ Key is "${this.vacMemKey}"`);
           highlight: true,
           onclick: (evt) => {
             unsafeWindow.focus();
-            GM_openInTab(window.location.href, { active: true });
+            newVacIds.forEach((vacId) => {
+              GM_openInTab(`https://hh.ru/vacancy/${vacId}`, { active: true });
+            });
+            unsafeWindow.reload();
           }
         });
         this.setVacMem(vacMem);
