@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.68
+// @version      1.69
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -51,6 +51,9 @@ class VacTrak {
 		setTimeout(() => {
 			if (document.querySelector(`.chatik-integration_visible`)) {
 				this.log(`Chatik detected. Not reloading the page`);
+				this.scheduleNextReload(); // продолжаем таймер
+			} else if (this.getNewVacs().length) {
+				this.log(`New vacancies found. Not reloading the page`);
 				this.scheduleNextReload(); // продолжаем таймер
 			} else {
 				this.log(`No new vacancies found. Reloading the page`);
@@ -131,10 +134,12 @@ Key is "${this.vacMemKey}"`);
 	private processNewVacs(): boolean {
 		const newVacs = this.getNewVacs();
 		const vacMem = this.getVacMem();
-		let newVacsNames: string[] = [];
+		
 		if (newVacs.length) {
 			// сортируем
 			// Object.entries(vacMem).sort(([, a], [, b]) => new Date(a) - new Date(b))
+			const newVacsNames: string[] = [];
+			const newVacIds = newVacs.map((vacId) => vacId);
 			newVacs.forEach((vacId) => {
 				vacMem[vacId] = new Date().toISOString() as IsoDateTimeString;
 				const vacEl = document.getElementById(vacId);
@@ -160,8 +165,11 @@ Key is "${this.vacMemKey}"`);
 				onclick: (evt) => {
 					// @ts-expect-error
 					unsafeWindow.focus();
-					GM_openInTab(window.location.href, { active: true });
-					// шаблон ссылки вакансии: `https://hh.ru/vacancy/${vacId}`
+					newVacIds.forEach((vacId) => {
+						GM_openInTab(`https://hh.ru/vacancy/${vacId}`, { active: true });
+					})					
+					// @ts-expect-error
+					unsafeWindow.reload();
 				},
 			});
 			this.setVacMem(vacMem);
