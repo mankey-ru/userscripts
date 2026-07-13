@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.69
+// @version      1.70
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -61,7 +61,7 @@
     run() {
       this.log(`
 Loaded.
-Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter. 
+Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
 Key is "${this.vacMemKey}"`);
       unsafeWindow.vacTrak = this;
       if (this.getNewVacs().length) {
@@ -136,12 +136,11 @@ Key is "${this.vacMemKey}"`);
           text: `${newVacsNames.join(";\n")}`,
           // timeout: 60 * 60 * 1000,
           highlight: true,
-          onclick: (evt) => {
-            unsafeWindow.focus();
+          onclick: () => {
             newVacIds.forEach((vacId) => {
               GM_openInTab(`https://hh.ru/vacancy/${vacId}`, { active: true });
             });
-            unsafeWindow.reload();
+            unsafeWindow.focus();
           }
         });
         this.setVacMem(vacMem);
