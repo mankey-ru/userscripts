@@ -37,7 +37,7 @@ for (const file of files) {
 			bundle: true,
 			minify: false,          // true для prod
 			sourcemap: false,       // 'inline' для dev
-			target: 'es2020',
+			target: 'es2022',
 			format: 'iife', 
 			platform: 'browser',
 			banner: {

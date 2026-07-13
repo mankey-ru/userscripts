@@ -10,46 +10,64 @@
 // @downloadURL  https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/ring-my-droid.user.js
 // ==/UserScript==
 
-const projName = 'RMD';
-const logFlag = 1;
-const hashPrefix = `#_findMyDevice__`;
+(async () => {
+	const projName = 'RMD';
+	const logFlag = 1;
+	const hashPrefix = `#_findMyDevice__`;
 
-if (window.location.hash.startsWith(hashPrefix)) {
-	const deviceId = decodeURIComponent(window.location.hash.replace(hashPrefix, ''));
-	log(`Started. Looking for ${deviceId}`)
+	if (window.location.hash.startsWith(hashPrefix)) {
+		const deviceId = decodeURIComponent(window.location.hash.replace(hashPrefix, ''));
+		// deviceId = 'Nothing A142' // .closest('selector')
+		log(`Started. Looking for ${deviceId}`);
 
-	// ⬇ Сначала выбираем ваш телефон по имени
-	waitFor('div[role="button"]', (el: HTMLElement) => {
-		el.click();
+		// ⬇ Сначала выбираем ваш телефон по имени
+		const phoneBtn = await waitForElement('div[role="button"]', deviceId);
+		phoneBtn.click();
 
 		// ⬇ После выбора ждём кнопку "Play sound"
-		waitFor('div[role="button"]', (btn: HTMLElement) => {
-			btn.click();
-		}, "Play sound");
-	}, deviceId);
-}
+		const soundBtn = await waitForElement('div[role="button"]', 'Play sound');
+		soundBtn.click();
+	}
 
-/** Функция ожидания элемента */
-function waitFor (selector: string, callback: (el: HTMLElement) => void, textContent?: string) {
-	log(`Element ${selector} with "${textContent}": waiting...`);
-	const observer = new MutationObserver(() => {
-		const candidates = Array.from(document.querySelectorAll(selector));
-		const el = textContent
-			? candidates.find(e => e.textContent.includes(textContent))
-			: candidates[0];
-		if (el) {
-			observer.disconnect();
-			log(`Element ${selector} with "${textContent}": found!`, el);
-			// @ts-expect-error
-			callback(el);
-		}
-	});
-	observer.observe(document.body, { childList: true, subtree: true });
-}
+	/**
+	 * Асинхронная функция ожидания и поиска элемента
+	 * @param selector - селектор элемента
+	 * @param textContent - текстовое содержимое элемента (необязательный параметр)
+	 * @param timeoutMs - таймаут в миллисекундах (по умолчанию 30000)
+	 */
+	async function waitForElement(
+		selector: string,
+		textContent?: string,
+		timeoutMs: number = 30000,
+	): Promise<HTMLElement> {
+		log(`Element ${selector} with "${textContent}": waiting...`);
 
+		return new Promise((resolve, reject) => {
+			const observer = new MutationObserver(() => {
+				const candidates = Array.from(document.querySelectorAll(selector));
+				const el = textContent
+					? candidates.find((e) => e.textContent?.includes(textContent))
+					: candidates[0];
 
-// @ts-expect-error
-function log (...args) {
-	if (logFlag)
-		console.log(`[${projName}]`, ...args);
-}
+				if (el) {
+					observer.disconnect();
+					log(`Element ${selector} with "${textContent}": found!`, el);
+					resolve(el as HTMLElement);
+				}
+			});
+
+			observer.observe(document.body, { childList: true, subtree: true });
+
+			// Таймаут
+			setTimeout(() => {
+				observer.disconnect();
+				reject(new Error(`Timeout waiting for ${selector} with "${textContent}"`));
+			}, timeoutMs);
+		});
+	}
+
+	// @ts-expect-error
+	function log(...args) {
+		if (logFlag) console.log(`[${projName}]`, ...args);
+	}
+})();
