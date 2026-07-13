@@ -16,27 +16,23 @@
 
 "use strict";
 (() => {
-  var __defProp = Object.defineProperty;
-  var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-  var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-
   // src/hh-vactrak.user.ts
   var VacTrak = class {
+    vacMemKeyBase = "vacMem";
+    vacMemKey = `${this.vacMemKeyBase}__${window.location.search}`;
     constructor() {
-      __publicField(this, "vacMemKeyBase", "vacMem");
-      __publicField(this, "vacMemKey", `${this.vacMemKeyBase}__${window.location.search}`);
-      /** @type {string} @private */
-      __publicField(this, "vacMemVersion", "1.1");
-      /** @type {number} @private */
-      __publicField(this, "vacTrakIntervalMins", 3);
-      /** @type {number} @private */
-      __publicField(this, "jitterSeconds", 5);
-      // ±30 секунд fuzzing
-      // @ts-expect-error
-      __publicField(this, "log", (...args) => {
-        console.log(`[VacTrak v${this.vacMemVersion}]`, ...args);
-      });
     }
+    /** @type {string} @private */
+    vacMemVersion = "1.1";
+    /** @type {number} @private */
+    vacTrakIntervalMins = 3;
+    /** @type {number} @private */
+    jitterSeconds = 5;
+    // ±30 секунд fuzzing
+    // @ts-expect-error
+    log = (...args) => {
+      console.log(`[VacTrak v${this.vacMemVersion}]`, ...args);
+    };
     /**
      * Рекурсивный таймер с jitter
      * @private
