@@ -9,6 +9,7 @@
 // @match        https://rabota.by/search/vacancy?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=hh.ru
 // @grant        GM_notification
+// @grant        GM_openInTab
 // @grant        unsafeWindow
 // @downloadURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/hh-vactrak.user.js
 // ==/UserScript==
@@ -140,17 +141,20 @@ Key is "${this.vacMemKey}"`);
 			// Object.entries(vacMem).sort(([, a], [, b]) => new Date(a) - new Date(b))
 			const newVacsNames: string[] = [];
 			const newVacIds = newVacs.map((vacId) => vacId);
-			newVacs.forEach((vacId) => {
-				vacMem[vacId] = new Date().toISOString() as IsoDateTimeString;
-				const vacEl = document.getElementById(vacId);
-				if (vacEl) {
-					vacEl.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
-					const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-					if (vacNameEl) {
-						newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
+			if (newVacs.length) {
+				newVacs.forEach((vacId) => {
+					vacMem[vacId] = new Date().toISOString() as IsoDateTimeString;
+					const vacEl = document.getElementById(vacId);
+					if (vacEl) {
+						vacEl.style.backgroundColor = this.colors.fresh;
+						const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
+						if (vacNameEl) {
+							newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
+						}
 					}
-				}
-			});
+				});
+				newVacs.reverse()[0];
+			}
 			// Notification.requestPermission().then((permission) => {
 			// 	if (permission === 'granted') {
 			// 		new Notification(`Новые вакансии:\n${newVacsNames.join(';\n')}`);
@@ -163,9 +167,18 @@ Key is "${this.vacMemKey}"`);
 				// timeout: 60 * 60 * 1000,
 				highlight: true,
 				onclick: () => {
-					newVacIds.forEach((vacId) => {
-						GM_openInTab(`https://hh.ru/vacancy/${vacId}`, { active: true });
-					})
+					newVacIds.forEach((vacId, index) => {
+						// открываем с дилеем, чтобы браузер не залупнулся :)
+						setTimeout(
+							() => {
+								GM_openInTab(`https://hh.ru/vacancy/${vacId}`, {
+									active: index === 0,
+									insert: true,
+								});
+							},
+							300 * (index + 1),
+						);
+					});
 					unsafeWindow.focus();
 				},
 			});
@@ -180,9 +193,23 @@ Key is "${this.vacMemKey}"`);
 		const vacMem = this.getVacMem();
 		const vacIdsOnPage = this.getVacIdsOnPage();
 		for (const vacId in vacMem) {
-			if (this.isVacIdString(vacId) && !vacIdsOnPage.includes(vacId)) {
-				delete vacMem[vacId];
+			if (this.isVacIdString(vacId)) {
+				const vacEl = document.getElementById(vacId);
+				if (vacEl?.textContent?.includes?.('You have applied')) {
+					// Случай, когда вакансии возникают снова
+					delete vacMem[vacId];
+				}
+				if (isOld(vacMem[vacId])) {
+					delete vacMem[vacId];
+				}
 			}
+		}
+		/** Определяет, что вакансия была запомнена более чем maxDays назад */
+		function isOld(ds1: IsoDateTimeString) {
+			const maxDays = 20;
+			const msInDay = 1000 * 60 * 60 * 24;
+			const diffInDays = Math.abs(Date.now() - new Date(ds1).getTime()) / msInDay;
+			return Math.floor(diffInDays) >= maxDays;
 		}
 		this.setVacMem(vacMem);
 	}
@@ -259,6 +286,11 @@ Key is "${this.vacMemKey}"`);
 
 		return { bar, timer }; // для остановки при необходимости
 	}
+
+	colors = {
+		fresh: 'rgba(255, 255, 0, 0.2)',
+		old: 'rgba(222, 0, 11, 0.2)',
+	};
 }
 
 if (
