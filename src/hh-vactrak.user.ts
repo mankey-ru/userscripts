@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.69
+// @version      1.70
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -65,7 +65,7 @@ class VacTrak {
 	run() {
 		this.log(`
 Loaded.
-Next check in: ${this.vacTrakIntervalMins} minute(s) ± ${this.jitterSeconds} sec jitter. 
+Next check in: ${this.vacTrakIntervalMins} minute(s) ± ${this.jitterSeconds} sec jitter.
 Key is "${this.vacMemKey}"`);
 
 		// @ts-expect-error
@@ -134,7 +134,7 @@ Key is "${this.vacMemKey}"`);
 	private processNewVacs(): boolean {
 		const newVacs = this.getNewVacs();
 		const vacMem = this.getVacMem();
-		
+
 		if (newVacs.length) {
 			// сортируем
 			// Object.entries(vacMem).sort(([, a], [, b]) => new Date(a) - new Date(b))
@@ -162,14 +162,11 @@ Key is "${this.vacMemKey}"`);
 				text: `${newVacsNames.join(';\n')}`,
 				// timeout: 60 * 60 * 1000,
 				highlight: true,
-				onclick: (evt) => {
-					// @ts-expect-error
-					unsafeWindow.focus();
+				onclick: () => {
 					newVacIds.forEach((vacId) => {
 						GM_openInTab(`https://hh.ru/vacancy/${vacId}`, { active: true });
-					})					
-					// @ts-expect-error
-					unsafeWindow.reload();
+					})
+					unsafeWindow.focus();
 				},
 			});
 			this.setVacMem(vacMem);
@@ -286,66 +283,3 @@ type IsoDateTimeString =
 
 /** Запись в localStorage id вакансии : дата сохранения */
 type VacMemItem = Record<VacIdString, IsoDateTimeString>;
-
-// ====================== GM_notification ======================
-
-/** Событие, которое приходит в onclick */
-export interface GMNotificationClickEvent {
-	preventDefault(): void;
-	readonly type: string;
-	// можно расширять другими свойствами MouseEvent при необходимости
-}
-
-/** Основные параметры уведомления */
-export interface GMNotificationDetails {
-	/** Текст уведомления */
-	text: string;
-	/** Заголовок */
-	title?: string;
-	/** URL изображения */
-	image?: string;
-	/** Тег для обновления существующего уведомления */
-	tag?: string;
-	/** Время в миллисекундах до автоматического закрытия (0 или undefined = бесконечно) */
-	timeout?: number;
-	/** URL, который открывается при клике (можно отменить через preventDefault) */
-	url?: string;
-	/** Выделить вкладку при показе уведомления */
-	highlight?: boolean;
-	/** Не воспроизводить звук */
-	silent?: boolean;
-	/** Обработчик клика по уведомлению */
-	onclick?: (event: GMNotificationClickEvent) => void;
-	/** Вызывается при закрытии уведомления (таймаут, клик или highlight вкладки) */
-	ondone?: () => void;
-}
-
-/** Современный вызов GM_notification */
-declare function GM_notification(details: GMNotificationDetails, ondone?: () => void): void;
-
-// ====================== GM_openInTab ======================
-export interface GMOpenTabOptions {
-	active?: boolean;
-	insert?: boolean | number;
-	setParent?: boolean;
-	incognito?: boolean;
-}
-
-export interface GMOpenTabObject {
-	close(): void;
-	readonly closed: boolean;
-	onclose: ((callback?: () => void) => void) | null;
-}
-
-declare function GM_openInTab(url: string, options?: GMOpenTabOptions): GMOpenTabObject;
-
-// ====================== Глобальное объявление ======================
-
-// declare global {
-// 	// GM_notification
-// 	const GM_notification: typeof GM_notification;
-// 	// GM_openInTab
-// 	const GM_openInTab: typeof GM_openInTab;
-// }
-
-// export {};
