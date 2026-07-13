@@ -9,6 +9,7 @@
 // @match        https://rabota.by/search/vacancy?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=hh.ru
 // @grant        GM_notification
+// @grant        GM_openInTab
 // @grant        unsafeWindow
 // @downloadURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/hh-vactrak.user.js
 // ==/UserScript==
@@ -120,25 +121,36 @@ Key is "${this.vacMemKey}"`);
       if (newVacs.length) {
         const newVacsNames = [];
         const newVacIds = newVacs.map((vacId) => vacId);
-        newVacs.forEach((vacId) => {
-          vacMem[vacId] = (/* @__PURE__ */ new Date()).toISOString();
-          const vacEl = document.getElementById(vacId);
-          if (vacEl) {
-            vacEl.style.backgroundColor = "rgba(255, 255, 0, 0.2)";
-            const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-            if (vacNameEl) {
-              newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
+        if (newVacs.length) {
+          newVacs.forEach((vacId) => {
+            vacMem[vacId] = (/* @__PURE__ */ new Date()).toISOString();
+            const vacEl = document.getElementById(vacId);
+            if (vacEl) {
+              vacEl.style.backgroundColor = this.colors.fresh;
+              const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
+              if (vacNameEl) {
+                newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
+              }
             }
-          }
-        });
+          });
+          newVacs.reverse()[0];
+        }
         GM_notification({
           title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438!`,
           text: `${newVacsNames.join(";\n")}`,
           // timeout: 60 * 60 * 1000,
           highlight: true,
           onclick: () => {
-            newVacIds.forEach((vacId) => {
-              GM_openInTab(`https://hh.ru/vacancy/${vacId}`, { active: true });
+            newVacIds.forEach((vacId, index) => {
+              setTimeout(
+                () => {
+                  GM_openInTab(`https://hh.ru/vacancy/${vacId}`, {
+                    active: index === 0,
+                    insert: true
+                  });
+                },
+                300 * (index + 1)
+              );
             });
             unsafeWindow.focus();
           }
@@ -153,9 +165,21 @@ Key is "${this.vacMemKey}"`);
       const vacMem = this.getVacMem();
       const vacIdsOnPage = this.getVacIdsOnPage();
       for (const vacId in vacMem) {
-        if (this.isVacIdString(vacId) && !vacIdsOnPage.includes(vacId)) {
-          delete vacMem[vacId];
+        if (this.isVacIdString(vacId)) {
+          const vacEl = document.getElementById(vacId);
+          if (vacEl?.textContent?.includes?.("You have applied")) {
+            delete vacMem[vacId];
+          }
+          if (isOld(vacMem[vacId])) {
+            delete vacMem[vacId];
+          }
         }
+      }
+      function isOld(ds1) {
+        const maxDays = 20;
+        const msInDay = 1e3 * 60 * 60 * 24;
+        const diffInDays = Math.abs(Date.now() - new Date(ds1).getTime()) / msInDay;
+        return Math.floor(diffInDays) >= maxDays;
       }
       this.setVacMem(vacMem);
     }
@@ -217,6 +241,10 @@ Key is "${this.vacMemKey}"`);
       }, interval);
       return { bar, timer };
     }
+    colors = {
+      fresh: "rgba(255, 255, 0, 0.2)",
+      old: "rgba(222, 0, 11, 0.2)"
+    };
   };
   if (document.body.innerHTML.includes(
     "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
