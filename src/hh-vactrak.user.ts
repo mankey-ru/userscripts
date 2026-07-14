@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.71
+// @version      1.72
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -63,7 +63,7 @@ class VacTrak {
 		}, nextDelay);
 	}
 
-	run() {
+	init() {
 		this.log(`
 Loaded.
 Next check in: ${this.vacTrakIntervalMins} minute(s) ± ${this.jitterSeconds} sec jitter.
@@ -77,9 +77,8 @@ Key is "${this.vacMemKey}"`);
 		}
 
 		this.cleanOutdatedVacs();
-
-		// Запускаем первый таймер с jitter
 		this.scheduleNextReload();
+		this.animateTitleCircle();
 	}
 
 	/**
@@ -96,24 +95,11 @@ Key is "${this.vacMemKey}"`);
 	 * @typedef {Record<VacIdString, IsoDateTimeString>} VacMem
 	 */
 
-	/**
-	 * Получить все id вакансий на текущей странице
-	 * @returns {VacIdString[]}
-	 * @private
-	 */
-	getVacIdsOnPage() {
+	/** Получить все id вакансий на текущей странице	 */
+	private getVacIdsOnPage() {
 		return Array.from(document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`))
 			.map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id)
-			.filter((id) => !!id && this.isVacIdString(id));
-	}
-
-	/**
-	 * @param {string} id
-	 * @returns {id is VacIdString}
-	 * @private
-	 */
-	private isVacIdString(id: string): id is VacIdString {
-		return /^\d+$/.test(id);
+			.filter((id) => typeof id === 'string');
 	}
 
 	/**
@@ -188,34 +174,36 @@ Key is "${this.vacMemKey}"`);
 		return false;
 	}
 
-	/** Удаляет из localStorage вакансии, которых нет на текущей странице */
+	/** Удаляет из localStorage неподходящие вакансии */
 	private cleanOutdatedVacs() {
 		const vacMem = this.getVacMem();
 		const vacIdsOnPage = this.getVacIdsOnPage();
 		for (const vacId in vacMem) {
-			if (this.isVacIdString(vacId)) {
-				const vacEl = document.getElementById(vacId);
-				if (vacEl?.textContent?.includes?.('You have applied')) {
-					// Случай, когда вакансии возникают снова
-					delete vacMem[vacId];
-				}
-				if (isOld(vacMem[vacId])) {
-					delete vacMem[vacId];
-				}
+			if (this.isNotSuitable(vacMem, vacId)) {
+				delete vacMem[vacId];
 			}
 		}
+
+		this.setVacMem(vacMem);
+	}
+
+	private isNotSuitable(vacMem: VacMemObj, vacId: string) {
+		const vacEl = document.getElementById(vacId);
+		return (
+			isOld(vacMem[vacId]) ||
+			vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]')
+		);
+
 		/** Определяет, что вакансия была запомнена более чем maxDays назад */
-		function isOld(ds1: IsoDateTimeString) {
-			const maxDays = 20;
+		function isOld(ds1: IsoDateTimeString, maxDays = 30) {
 			const msInDay = 1000 * 60 * 60 * 24;
 			const diffInDays = Math.abs(Date.now() - new Date(ds1).getTime()) / msInDay;
 			return Math.floor(diffInDays) >= maxDays;
 		}
-		this.setVacMem(vacMem);
 	}
 
 	/** Получить память о вакансиях */
-	private getVacMem(): VacMemItem {
+	private getVacMem(): VacMemObj {
 		const stored = localStorage.getItem(this.vacMemKey);
 
 		if (!stored) {
@@ -237,7 +225,7 @@ Key is "${this.vacMemKey}"`);
 		}
 	}
 	/** Запомнить вакансии в localStorage */
-	setVacMem(vacMem: VacMemItem) {
+	setVacMem(vacMem: VacMemObj) {
 		localStorage.setItem(this.vacMemKey, JSON.stringify(vacMem));
 	}
 	/** Очистить вакансии 	orage */
@@ -291,6 +279,27 @@ Key is "${this.vacMemKey}"`);
 		fresh: 'rgba(255, 255, 0, 0.2)',
 		old: 'rgba(222, 0, 11, 0.2)',
 	};
+
+	private animateTitleCircle(enable: boolean = true) {
+		let titleInterval: number | null = null;
+		const originalTitle = document.title;
+
+		const circleStates = ['🔴', '⭕'];
+		let stateIndex = 0;
+		if (titleInterval) {
+			clearInterval(titleInterval);
+			titleInterval = null;
+			document.title = originalTitle;
+		}
+
+		if (!enable) return;
+
+		titleInterval = setInterval(() => {
+			stateIndex = (stateIndex + 1) % circleStates.length;
+			const prefix = circleStates[stateIndex];
+			document.title = `${prefix} ${originalTitle}`;
+		}, 500); // 500ms = полный цикл ~1 секунда
+	}
 }
 
 if (
@@ -300,7 +309,7 @@ if (
 ) {
 	window.location.reload();
 }
-new VacTrak().run();
+new VacTrak().init();
 
 /** Запускает progress bar сверху экрана */
 
@@ -314,4 +323,4 @@ type IsoDateTimeString =
 	`${number}${number}${number}${number}-${number}${number}-${number}${number}T${number}${number}:${number}${number}:${number}${number}.${number}${number}${number}Z`;
 
 /** Запись в localStorage id вакансии : дата сохранения */
-type VacMemItem = Record<VacIdString, IsoDateTimeString>;
+type VacMemObj = Record<string, IsoDateTimeString>;
