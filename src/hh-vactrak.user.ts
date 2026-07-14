@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.77
+// @version      1.78
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -13,6 +13,8 @@
 // @grant        unsafeWindow
 // @downloadURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/hh-vactrak.user.js
 // ==/UserScript==
+
+import { repoUrl } from './_shared.js';
 
 class VacTrak {
 	private vacMemKeyBase: string = 'vacMem';
@@ -130,6 +132,9 @@ Key is "${this.vacMemKey}"`);
 			// 	}
 			// }
 
+			new Audio(`${repoUrl}/assets/sound/kirov.mp3`)
+				.play()
+				.catch((err) => this.log('Не удалось воспроизвести звук', err));
 			GM_notification({
 				title: `Новые вакансии (${newVacsNames.length})`,
 				text: `${newVacsNames.join(';\n')}`,
