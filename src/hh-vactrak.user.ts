@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.72
+// @version      1.73
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -191,7 +191,8 @@ Key is "${this.vacMemKey}"`);
 		const vacEl = document.getElementById(vacId);
 		return (
 			isOld(vacMem[vacId]) ||
-			vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]')
+			vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]') ||
+			vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_discard"]')
 		);
 
 		/** Определяет, что вакансия была запомнена более чем maxDays назад */
