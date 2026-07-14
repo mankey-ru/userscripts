@@ -4,7 +4,8 @@ import { readdirSync, readFileSync, mkdirSync } from 'fs';
 import { join, basename } from 'path';
 
 const srcDir = 'src';
-const distDir = 'dist';
+const dev = process.argv.includes('--devbuild');
+const distDir = dev ? 'dist-dev' : 'dist';
 
 // Создаём dist, если нет
 mkdirSync(distDir, { recursive: true });
@@ -38,7 +39,7 @@ for (const file of files) {
 			minify: false,          // true для prod
 			sourcemap: false,       // 'inline' для dev
 			target: 'es2022',
-			format: 'iife', 
+			format: 'iife',
 			platform: 'browser',
 			banner: {
 				js: header,

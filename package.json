@@ -16,6 +16,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node build.mjs",
+    "start": "node build.mjs --devbuild",
     "dev": "node build.mjs --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
