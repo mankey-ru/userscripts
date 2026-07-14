@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.79
+// @version      1.80
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -41,7 +41,7 @@ Key is "${this.vacMemKey}"`);
 		// @ts-expect-error
 		unsafeWindow.vacTrak = this;
 
-		if (this.getUnsavedVacs().length) {
+		if (this.getNewVacs().length) {
 			this.processNewVacs();
 		}
 
@@ -74,7 +74,7 @@ Key is "${this.vacMemKey}"`);
 			if (document.querySelector(`.chatik-integration_visible`)) {
 				this.log(`Chatik detected. Not reloading the page`);
 				this.scheduleNextReload(); // продолжаем таймер
-			} else if (this.getUnsavedVacs().length) {
+			} else if (this.getNewVacs().length) {
 				this.log(`New vacancies found. Not reloading the page`);
 				this.scheduleNextReload(); // продолжаем таймер
 			} else {
@@ -92,16 +92,23 @@ Key is "${this.vacMemKey}"`);
 	}
 
 	/** Получить новые вакансии, которых нет в localStorage */
-	private getUnsavedVacs(): string[] {
+	private getUnsavedVacIds(): string[] {
 		const vacMem = this.getVacMem();
 		const vacIdsOnPage = this.getVacIdsOnPage();
 		const newVacs = vacIdsOnPage.filter((id) => !vacMem[id]);
 		return newVacs;
 	}
 
+	/** Получить новые вакансии */
+	private getNewVacs(): string[] {
+		const unsavedVacIds = this.getUnsavedVacIds();
+		const newVacs = unsavedVacIds.filter(this.isNotSuitable);
+		return newVacs;
+	}
+
 	/** Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление */
 	private processNewVacs(): boolean {
-		const newVacs = this.getUnsavedVacs();
+		const newVacs = this.getNewVacs();
 		const vacMem = this.getVacMem();
 
 		if (newVacs.length) {
@@ -170,7 +177,7 @@ Key is "${this.vacMemKey}"`);
 		const vacMem = this.getVacMem();
 		const vacIdsOnPage = this.getVacIdsOnPage();
 		for (const vacId in vacMem) {
-			if (this.isNotSuitable(vacMem, vacId)) {
+			if (this.isNotSuitable(vacId)) {
 				delete vacMem[vacId];
 			}
 		}
@@ -178,7 +185,8 @@ Key is "${this.vacMemKey}"`);
 		this.setVacMem(vacMem);
 	}
 
-	private isNotSuitable(vacMem: VacMemObj, vacId: string) {
+	private isNotSuitable(vacId: string) {
+		const vacMem = this.getVacMem();
 		const vacEl = document.getElementById(vacId);
 		return (
 			isOld(vacMem[vacId]) ||
