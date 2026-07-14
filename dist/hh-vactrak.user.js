@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.71
+// @version      1.72
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -59,7 +59,7 @@
         }
       }, nextDelay);
     }
-    run() {
+    init() {
       this.log(`
 Loaded.
 Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
@@ -70,6 +70,7 @@ Key is "${this.vacMemKey}"`);
       }
       this.cleanOutdatedVacs();
       this.scheduleNextReload();
+      this.animateTitleCircle();
     }
     /**
      * ISO 8601 строка в формате, который возвращает `new Date().toISOString()`
@@ -84,21 +85,9 @@ Key is "${this.vacMemKey}"`);
      * Пример: "2026-07-08T13:24:56.789Z"
      * @typedef {Record<VacIdString, IsoDateTimeString>} VacMem
      */
-    /**
-     * Получить все id вакансий на текущей странице
-     * @returns {VacIdString[]}
-     * @private
-     */
+    /** Получить все id вакансий на текущей странице	 */
     getVacIdsOnPage() {
-      return Array.from(document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`)).map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id).filter((id) => !!id && this.isVacIdString(id));
-    }
-    /**
-     * @param {string} id
-     * @returns {id is VacIdString}
-     * @private
-     */
-    isVacIdString(id) {
-      return /^\d+$/.test(id);
+      return Array.from(document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`)).map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id).filter((id) => typeof id === "string");
     }
     /**
      * Получить новые вакансии, которых нет в localStorage
@@ -160,28 +149,25 @@ Key is "${this.vacMemKey}"`);
       }
       return false;
     }
-    /** Удаляет из localStorage вакансии, которых нет на текущей странице */
+    /** Удаляет из localStorage неподходящие вакансии */
     cleanOutdatedVacs() {
       const vacMem = this.getVacMem();
       const vacIdsOnPage = this.getVacIdsOnPage();
       for (const vacId in vacMem) {
-        if (this.isVacIdString(vacId)) {
-          const vacEl = document.getElementById(vacId);
-          if (vacEl?.textContent?.includes?.("You have applied")) {
-            delete vacMem[vacId];
-          }
-          if (isOld(vacMem[vacId])) {
-            delete vacMem[vacId];
-          }
+        if (this.isNotSuitable(vacMem, vacId)) {
+          delete vacMem[vacId];
         }
       }
-      function isOld(ds1) {
-        const maxDays = 20;
+      this.setVacMem(vacMem);
+    }
+    isNotSuitable(vacMem, vacId) {
+      const vacEl = document.getElementById(vacId);
+      return isOld(vacMem[vacId]) || vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]');
+      function isOld(ds1, maxDays = 30) {
         const msInDay = 1e3 * 60 * 60 * 24;
         const diffInDays = Math.abs(Date.now() - new Date(ds1).getTime()) / msInDay;
         return Math.floor(diffInDays) >= maxDays;
       }
-      this.setVacMem(vacMem);
     }
     /** Получить память о вакансиях */
     getVacMem() {
@@ -245,11 +231,28 @@ Key is "${this.vacMemKey}"`);
       fresh: "rgba(255, 255, 0, 0.2)",
       old: "rgba(222, 0, 11, 0.2)"
     };
+    animateTitleCircle(enable = true) {
+      let titleInterval = null;
+      const originalTitle = document.title;
+      const circleStates = ["\u{1F534}", "\u2B55"];
+      let stateIndex = 0;
+      if (titleInterval) {
+        clearInterval(titleInterval);
+        titleInterval = null;
+        document.title = originalTitle;
+      }
+      if (!enable) return;
+      titleInterval = setInterval(() => {
+        stateIndex = (stateIndex + 1) % circleStates.length;
+        const prefix = circleStates[stateIndex];
+        document.title = `${prefix} ${originalTitle}`;
+      }, 500);
+    }
   };
   if (document.body.innerHTML.includes(
     "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
   )) {
     window.location.reload();
   }
-  new VacTrak().run();
+  new VacTrak().init();
 })();
