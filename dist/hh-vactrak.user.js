@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.73
+// @version      1.75
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -23,21 +23,32 @@
     vacMemKey = `${this.vacMemKeyBase}__${window.location.search}`;
     constructor() {
     }
-    /** @type {string} @private */
-    vacMemVersion = "1.1";
-    /** @type {number} @private */
     vacTrakIntervalMins = 3;
-    /** @type {number} @private */
-    jitterSeconds = 5;
+    jitterSeconds = 30;
     // ±30 секунд fuzzing
+    init() {
+      this.log(`
+Loaded.
+Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
+Key is "${this.vacMemKey}"`);
+      if (document.body.innerHTML.includes(
+        "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
+      )) {
+        unsafeWindow.location.reload();
+      }
+      unsafeWindow.vacTrak = this;
+      if (this.getUnsavedVacs().length) {
+        this.processNewVacs();
+      }
+      this.cleanOutdatedVacs();
+      this.scheduleNextReload();
+      this.animateTitleCircle();
+    }
     // @ts-expect-error
     log = (...args) => {
-      console.log(`[VacTrak v${this.vacMemVersion}]`, ...args);
+      console.log(`[VacTrak]`, ...args);
     };
-    /**
-     * Рекурсивный таймер с jitter
-     * @private
-     */
+    /** Рекурсивный таймер с jitter */
     scheduleNextReload() {
       const baseMs = 1e3 * 60 * this.vacTrakIntervalMins;
       const jitterMs = Math.floor(Math.random() * (2 * this.jitterSeconds * 1e3 + 1)) - this.jitterSeconds * 1e3;
@@ -50,7 +61,7 @@
         if (document.querySelector(`.chatik-integration_visible`)) {
           this.log(`Chatik detected. Not reloading the page`);
           this.scheduleNextReload();
-        } else if (this.getNewVacs().length) {
+        } else if (this.getUnsavedVacs().length) {
           this.log(`New vacancies found. Not reloading the page`);
           this.scheduleNextReload();
         } else {
@@ -59,62 +70,32 @@
         }
       }, nextDelay);
     }
-    init() {
-      this.log(`
-Loaded.
-Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
-Key is "${this.vacMemKey}"`);
-      unsafeWindow.vacTrak = this;
-      if (this.getNewVacs().length) {
-        this.processNewVacs();
-      }
-      this.cleanOutdatedVacs();
-      this.scheduleNextReload();
-      this.animateTitleCircle();
-    }
-    /**
-     * ISO 8601 строка в формате, который возвращает `new Date().toISOString()`
-     * Пример: "2026-07-08T13:24:56.789Z"
-     * @typedef {`${number}${number}${number}${number}-${number}${number}-${number}${number}T${number}${number}:${number}${number}:${number}${number}.${number}${number}${number}Z`} IsoDateTimeString
-     *
-     * ID вакансии в виде строки, которая может быть использована как ключ в объекте
-     * Пример: "12345678"
-     * @typedef {`${number}`} VacIdString
-     *
-     * Запись в localStorage id вакансии : дата сохранения
-     * Пример: "2026-07-08T13:24:56.789Z"
-     * @typedef {Record<VacIdString, IsoDateTimeString>} VacMem
-     */
     /** Получить все id вакансий на текущей странице	 */
     getVacIdsOnPage() {
       return Array.from(document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`)).map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id).filter((id) => typeof id === "string");
     }
-    /**
-     * Получить новые вакансии, которых нет в localStorage
-     * @returns {VacIdString[]}
-     * @private
-     */
-    getNewVacs() {
+    /** Получить новые вакансии, которых нет в localStorage */
+    getUnsavedVacs() {
       const vacMem = this.getVacMem();
       const vacIdsOnPage = this.getVacIdsOnPage();
       const newVacs = vacIdsOnPage.filter((id) => !vacMem[id]);
       return newVacs;
     }
-    /**
-     * Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление
-     * @returns {boolean} true если были новые вакансии, false если нет
-     */
+    /** Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление */
     processNewVacs() {
-      const newVacs = this.getNewVacs();
+      const newVacs = this.getUnsavedVacs();
       const vacMem = this.getVacMem();
       if (newVacs.length) {
         const newVacsNames = [];
         const newVacIds = newVacs.map((vacId) => vacId);
         if (newVacs.length) {
-          newVacs.forEach((vacId) => {
+          newVacs.forEach((vacId, index) => {
             vacMem[vacId] = (/* @__PURE__ */ new Date()).toISOString();
             const vacEl = document.getElementById(vacId);
             if (vacEl) {
+              if (index === 0) {
+                vacEl.scrollIntoView();
+              }
               vacEl.style.backgroundColor = this.colors.fresh;
               const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
               if (vacNameEl) {
@@ -125,7 +106,7 @@ Key is "${this.vacMemKey}"`);
           newVacs.reverse()[0];
         }
         GM_notification({
-          title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438!`,
+          title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438 (${newVacsNames.length})`,
           text: `${newVacsNames.join(";\n")}`,
           // timeout: 60 * 60 * 1000,
           highlight: true,
@@ -190,11 +171,12 @@ Key is "${this.vacMemKey}"`);
     setVacMem(vacMem) {
       localStorage.setItem(this.vacMemKey, JSON.stringify(vacMem));
     }
-    /** Очистить вакансии 	orage */
+    /** Очистить вакансии */
     clearVacMem() {
       localStorage.removeItem(this.vacMemKey);
       window.location.reload();
     }
+    /** Запускает progress bar сверху экрана */
     topScreenProgressBar(durationMs = 6e4, color = "#00ff00") {
       let bar = document.getElementById("progress-bar-top");
       if (!bar) {
@@ -231,6 +213,7 @@ Key is "${this.vacMemKey}"`);
       fresh: "rgba(255, 255, 0, 0.2)",
       old: "rgba(222, 0, 11, 0.2)"
     };
+    /** Делает мигалку в тайтле */
     animateTitleCircle(enable = true) {
       let titleInterval = null;
       const originalTitle = document.title;
@@ -249,10 +232,5 @@ Key is "${this.vacMemKey}"`);
       }, 500);
     }
   };
-  if (document.body.innerHTML.includes(
-    "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
-  )) {
-    window.location.reload();
-  }
   new VacTrak().init();
 })();
