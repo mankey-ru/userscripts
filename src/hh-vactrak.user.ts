@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.75
+// @version      1.77
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -112,7 +112,9 @@ Key is "${this.vacMemKey}"`);
 					vacMem[vacId] = new Date().toISOString() as IsoDateTimeString;
 					const vacEl = document.getElementById(vacId);
 					if (vacEl) {
-						if (index === 0) { vacEl.scrollIntoView(); }
+						if (index === 0) {
+							vacEl.scrollIntoView();
+						}
 						vacEl.style.backgroundColor = this.colors.fresh;
 						const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
 						if (vacNameEl) {
@@ -149,6 +151,7 @@ Key is "${this.vacMemKey}"`);
 					unsafeWindow.focus();
 				},
 			});
+			this.animateTitleCircle('⚠️');
 			this.setVacMem(vacMem);
 			return true;
 		}
@@ -264,26 +267,54 @@ Key is "${this.vacMemKey}"`);
 		old: 'rgba(222, 0, 11, 0.2)',
 	};
 
-	/** Делает мигалку в тайтле */
-	private animateTitleCircle(enable: boolean = true) {
-		let titleInterval: number | null = null;
-		const originalTitle = document.title;
+	/** Делает мигалку. Если передать customEmoji — останавливает анимацию и ставит его. */
+	private animateTitleCircle(customEmoji?: string) {
+		let faviconBlinkInterval: number | undefined = undefined;
+		let isBlinking = false;
+		let currentIndex = 0;
+		const emojis = ['🔴', '⭕'];
 
-		const circleStates = ['🔴', '⭕'];
-		let stateIndex = 0;
-		if (titleInterval) {
-			clearInterval(titleInterval);
-			titleInterval = null;
-			document.title = originalTitle;
+		// Внутренняя функция смены фавикона
+		const setFaviconEmoji = (emoji: string) => {
+			document.querySelectorAll('link[rel*="icon"]').forEach((link) => link.remove());
+
+			const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><text x="50%" y="50%" font-size="48" text-anchor="middle" dominant-baseline="middle">${emoji}</text></svg>`;
+			const dataUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+
+			const link = document.createElement('link');
+			link.rel = 'icon';
+			link.type = 'image/svg+xml';
+			link.href = dataUrl;
+			document.head.appendChild(link);
+		};
+
+		// Если передан кастомный эмодзи — ставим его и останавливаем мигалку
+		if (customEmoji) {
+			if (faviconBlinkInterval) {
+				clearInterval(faviconBlinkInterval);
+				faviconBlinkInterval = undefined;
+			}
+			isBlinking = false;
+			setFaviconEmoji(customEmoji);
+			return;
 		}
 
-		if (!enable) return;
+		// Toggle-режим (без параметра)
+		if (isBlinking) {
+			clearInterval(faviconBlinkInterval);
+			faviconBlinkInterval = undefined;
+			isBlinking = false;
+			return;
+		}
 
-		titleInterval = setInterval(() => {
-			stateIndex = (stateIndex + 1) % circleStates.length;
-			const prefix = circleStates[stateIndex];
-			document.title = `${prefix} ${originalTitle}`;
-		}, 500); // 500ms = полный цикл ~1 секунда
+		isBlinking = true;
+		currentIndex = 0;
+		setFaviconEmoji(emojis[0]);
+
+		faviconBlinkInterval = setInterval(() => {
+			currentIndex = (currentIndex + 1) % emojis.length;
+			setFaviconEmoji(emojis[currentIndex]);
+		}, 1000);
 	}
 }
 
