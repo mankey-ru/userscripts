@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.84
+// @version      2.0.0
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -36,6 +36,10 @@
       if (VACTRAK_INTERVAL) this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
     }
     init() {
+      if (new URLSearchParams(window.location.search).get("use_vactrak") !== "yes") {
+        this.log("\u26A0\uFE0F VacTrak is disabled. Add `&use_vactrak=yes` to the URL to enable it.");
+        return;
+      }
       this.getSettings();
       this.log(
         `Loaded.
@@ -160,7 +164,10 @@ Key is "${this.vacMemKey}"
                 "Content-Type": "application/json",
                 Accept: "application/json"
               },
-              body: JSON.stringify({ vacancyList: newVacDetails })
+              body: JSON.stringify({
+                // filterParams: this.getFilterParams(),
+                vacancyList: newVacDetails
+              })
             });
             let resJson = await res.json();
             this.log(`\u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043E\u0442\u0432\u0435\u0442\u0438\u043B`, resJson);
@@ -255,6 +262,17 @@ Key is "${this.vacMemKey}"
     colors = {
       fresh: "rgba(255, 255, 0, 0.2)",
       old: "rgba(222, 0, 11, 0.2)"
+    };
+    getFilterParams = () => {
+      const params = {};
+      new URLSearchParams(window.location.search).forEach((value, key) => {
+        if (params[key]) {
+          params[key] = Array.isArray(params[key]) ? [...params[key], value] : [params[key], value];
+        } else {
+          params[key] = value;
+        }
+      });
+      return params;
     };
     /** Делает мигалку. Если передать customEmoji — останавливает анимацию и ставит его. */
     animateTitleCircle(customEmoji) {
