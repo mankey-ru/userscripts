@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.84
+// @version      2.0.0
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -32,6 +32,10 @@ class VacTrak {
 	}
 
 	init() {
+		if (new URLSearchParams(window.location.search).get('use_vactrak') !== 'yes') {
+			this.log('⚠️ VacTrak is disabled. Add `&use_vactrak=yes` to the URL to enable it.');
+			return;
+		}
 		this.getSettings();
 		this.log(
 			`Loaded.
@@ -188,6 +192,7 @@ Key is "${this.vacMemKey}"
 			});
 			this.animateTitleCircle('⚠️');
 			this.setVacMem(vacMem);
+
 			if (this.vacTrakUrl) {
 				try {
 					let res = await fetch(`${this.vacTrakUrl}/api/hh/vac`, {
@@ -196,7 +201,10 @@ Key is "${this.vacMemKey}"
 							'Content-Type': 'application/json',
 							Accept: 'application/json',
 						},
-						body: JSON.stringify({vacancyList: newVacDetails}),
+						body: JSON.stringify({
+							// filterParams: this.getFilterParams(),
+							vacancyList: newVacDetails
+						}),
 					});
 					let resJson = await res.json();
 					this.log(`Запрос VACTRAK_URL ответил`, resJson);
@@ -317,6 +325,20 @@ Key is "${this.vacMemKey}"
 	private colors = {
 		fresh: 'rgba(255, 255, 0, 0.2)',
 		old: 'rgba(222, 0, 11, 0.2)',
+	};
+
+	private getFilterParams = () => {
+		const params: Record<string, string | string[]> = {};
+		new URLSearchParams(window.location.search).forEach((value, key) => {
+			if (params[key]) {
+				params[key] = Array.isArray(params[key])
+					? [...params[key], value]
+					: [params[key], value];
+			} else {
+				params[key] = value;
+			}
+		});
+		return params;
 	};
 
 	/** Делает мигалку. Если передать customEmoji — останавливает анимацию и ставит его. */
