@@ -27,7 +27,7 @@ class VacTrak {
 
 	private getSettings() {
 		const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
-		if (VACTRAK_URL) this.vacTrakUrl = VACTRAK_URL;
+		if (VACTRAK_URL) this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, '').trim(); // удаляем концевой слеш, если есть
 		if (VACTRAK_INTERVAL) this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
 	}
 
@@ -129,7 +129,8 @@ Key is "${this.vacMemKey}"
 		if (newVacs.length) {
 			// сортируем
 			// Object.entries(vacMem).sort(([, a], [, b]) => new Date(a) - new Date(b))
-			const newVacsNames: string[] = [];
+			type VacDetails = { id: number; title: string; company: string };
+			const newVacDetails: VacDetails[] = [];
 			const newVacIds = newVacs.map((vacId) => vacId);
 			if (newVacs.length) {
 				newVacs.forEach((vacId, index) => {
@@ -141,9 +142,14 @@ Key is "${this.vacMemKey}"
 						}
 						vacEl.style.backgroundColor = this.colors.fresh;
 						const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-						if (vacNameEl) {
-							newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
-						}
+						const vacCompanyEl = vacEl.querySelector(
+							`[data-qa='vacancy-serp__vacancy-employer-text']`,
+						);
+						newVacDetails.push({
+							id: +vacId,
+							title: vacNameEl?.textContent.trim() || '<notitle>',
+							company: vacCompanyEl?.textContent.trim() || '<nocompany>',
+						});
 					}
 				});
 				newVacs.reverse()[0];
@@ -159,8 +165,8 @@ Key is "${this.vacMemKey}"
 				.catch((err) => this.log('Не удалось воспроизвести звук', err));
 
 			GM_notification({
-				title: `Новые вакансии (${newVacsNames.length})`,
-				text: `${newVacsNames.join(';\n')}`,
+				title: `Новые вакансии (${newVacDetails.length})`,
+				text: `${newVacDetails.map((d) => `${d.title} @ ${d.company}`).join(';\n')}`,
 				// timeout: 60 * 60 * 1000,
 				highlight: true,
 				silent: false,
@@ -184,19 +190,18 @@ Key is "${this.vacMemKey}"
 			this.setVacMem(vacMem);
 			if (this.vacTrakUrl) {
 				try {
-					let baseUrl = localStorage.VACTRAK_URL;
-					let res = await fetch(`${baseUrl}/api/hh/vac`, {
+					let res = await fetch(`${this.vacTrakUrl}/api/hh/vac`, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
 							Accept: 'application/json',
 						},
-						body: JSON.stringify({ id: 123 }),
+						body: JSON.stringify({vacancyList: newVacDetails}),
 					});
 					let resJson = await res.json();
 					this.log(`Запрос VACTRAK_URL ответил`, resJson);
 				} catch (error) {
-					this.log(`Запрос VACTRAK_URL не удался`, error);
+					this.log(`⚠️ Запрос VACTRAK_URL не удался`, error);
 				}
 			}
 			return true;
