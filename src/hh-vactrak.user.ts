@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.82
+// @version      1.83
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -21,14 +21,27 @@ class VacTrak {
 	vacMemKey: string = `${this.vacMemKeyBase}__${window.location.search}`;
 	constructor() {}
 
-	private vacTrakIntervalMins = 3;
+	private vacTrakIntervalMins = 2;
 	private jitterSeconds = 30; // ±30 секунд fuzzing
+	private vacTrakUrl = '';
+
+	private getSettings() {
+		const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
+		if (VACTRAK_URL) this.vacTrakUrl = VACTRAK_URL;
+		if (VACTRAK_INTERVAL) this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
+	}
 
 	init() {
-		this.log(`
-Loaded.
+		this.getSettings();
+		this.log(
+			`Loaded.
 Next check in: ${this.vacTrakIntervalMins} minute(s) ± ${this.jitterSeconds} sec jitter.
-Key is "${this.vacMemKey}"`);
+Key is "${this.vacMemKey}"
+`.trim(),
+		);
+		if (this.vacTrakUrl) {
+			this.log(`⚠️ Vacancies will be sent to vacTrak URL: ${this.vacTrakUrl}. `);
+		}
 
 		if (
 			document.body.innerHTML.includes(
@@ -46,8 +59,8 @@ Key is "${this.vacMemKey}"`);
 		}
 
 		this.cleanOutdatedVacs();
-		this.scheduleNextReload();
 		this.animateTitleCircle();
+		this.scheduleNextReload();
 	}
 
 	// @ts-expect-error
@@ -74,11 +87,13 @@ Key is "${this.vacMemKey}"`);
 			if (document.querySelector(`.chatik-integration_visible`)) {
 				this.log(`Chatik detected. Not reloading the page`);
 				this.scheduleNextReload(); // продолжаем таймер
-			} else if (this.getNewVacs().length) {
-				this.log(`New vacancies found. Not reloading the page`);
-				this.scheduleNextReload(); // продолжаем таймер
-			} else {
-				this.log(`No new vacancies found. Reloading the page`);
+			}
+			// else if (this.getNewVacs().length) {
+			// 	this.log(`New vacancies found. Not reloading the page`);
+			// 	this.scheduleNextReload(); // продолжаем таймер
+			// }
+			else {
+				this.log(`Reloading the page`);
 				window.location.reload();
 			}
 		}, nextDelay);
@@ -102,12 +117,12 @@ Key is "${this.vacMemKey}"`);
 	/** Получить новые вакансии */
 	private getNewVacs(): string[] {
 		const unsavedVacIds = this.getUnsavedVacIds();
-		const newVacs = unsavedVacIds.filter(vacId => !this.isNotSuitable(vacId));
+		const newVacs = unsavedVacIds.filter((vacId) => !this.isNotSuitable(vacId));
 		return newVacs;
 	}
 
 	/** Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление */
-	private processNewVacs(): boolean {
+	private async processNewVacs(): Promise<boolean> {
 		const newVacs = this.getNewVacs();
 		const vacMem = this.getVacMem();
 
@@ -167,6 +182,23 @@ Key is "${this.vacMemKey}"`);
 			});
 			this.animateTitleCircle('⚠️');
 			this.setVacMem(vacMem);
+			if (this.vacTrakUrl) {
+				try {
+					let baseUrl = localStorage.VACTRAK_URL;
+					let res = await fetch(`${baseUrl}/api/hh/vac`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Accept: 'application/json',
+						},
+						body: JSON.stringify({ id: 123 }),
+					});
+					let resJson = await res.json();
+					this.log(`Запрос VACTRAK_URL ответил`, resJson);
+				} catch (error) {
+					this.log(`Запрос VACTRAK_URL не удался`, error);
+				}
+			}
 			return true;
 		}
 		return false;
@@ -346,3 +378,16 @@ type IsoDateTimeString =
 
 /** Запись в localStorage id вакансии : дата сохранения */
 type VacMemObj = Record<string, IsoDateTimeString>;
+
+/** Разбивает массив на подмассивы (чанки) фиксированного максимального размера. */
+export function arrToChunks<T>(arr: readonly T[], size: number): T[][] {
+	if (size <= 0 || !arr.length) return [];
+
+	return arr.reduce((chunks: T[][], item: T, index: number) => {
+		if (index % size === 0) {
+			chunks.push([]);
+		}
+		chunks[chunks.length - 1].push(item);
+		return chunks;
+	}, [] as T[][]);
+}
