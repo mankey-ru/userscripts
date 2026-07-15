@@ -32,7 +32,7 @@
     vacTrakUrl = "";
     getSettings() {
       const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
-      if (VACTRAK_URL) this.vacTrakUrl = VACTRAK_URL;
+      if (VACTRAK_URL) this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, "").trim();
       if (VACTRAK_INTERVAL) this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
     }
     init() {
@@ -104,7 +104,7 @@ Key is "${this.vacMemKey}"
       const newVacs = this.getNewVacs();
       const vacMem = this.getVacMem();
       if (newVacs.length) {
-        const newVacsNames = [];
+        const newVacDetails = [];
         const newVacIds = newVacs.map((vacId) => vacId);
         if (newVacs.length) {
           newVacs.forEach((vacId, index) => {
@@ -116,17 +116,22 @@ Key is "${this.vacMemKey}"
               }
               vacEl.style.backgroundColor = this.colors.fresh;
               const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-              if (vacNameEl) {
-                newVacsNames.push(`[${vacId}] ${vacNameEl.textContent.trim()}`);
-              }
+              const vacCompanyEl = vacEl.querySelector(
+                `[data-qa='vacancy-serp__vacancy-employer-text']`
+              );
+              newVacDetails.push({
+                id: +vacId,
+                title: vacNameEl?.textContent.trim() || "<notitle>",
+                company: vacCompanyEl?.textContent.trim() || "<nocompany>"
+              });
             }
           });
           newVacs.reverse()[0];
         }
         new Audio(`${repoUrl}/assets/sound/kirov.mp3`).play().catch((err) => this.log("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0432\u043E\u0441\u043F\u0440\u043E\u0438\u0437\u0432\u0435\u0441\u0442\u0438 \u0437\u0432\u0443\u043A", err));
         GM_notification({
-          title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438 (${newVacsNames.length})`,
-          text: `${newVacsNames.join(";\n")}`,
+          title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438 (${newVacDetails.length})`,
+          text: `${newVacDetails.map((d) => `${d.title} @ ${d.company}`).join(";\n")}`,
           // timeout: 60 * 60 * 1000,
           highlight: true,
           silent: false,
@@ -149,19 +154,18 @@ Key is "${this.vacMemKey}"
         this.setVacMem(vacMem);
         if (this.vacTrakUrl) {
           try {
-            let baseUrl = localStorage.VACTRAK_URL;
-            let res = await fetch(`${baseUrl}/api/hh/vac`, {
+            let res = await fetch(`${this.vacTrakUrl}/api/hh/vac`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Accept: "application/json"
               },
-              body: JSON.stringify({ id: 123 })
+              body: JSON.stringify({ vacancyList: newVacDetails })
             });
             let resJson = await res.json();
             this.log(`\u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043E\u0442\u0432\u0435\u0442\u0438\u043B`, resJson);
           } catch (error) {
-            this.log(`\u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043D\u0435 \u0443\u0434\u0430\u043B\u0441\u044F`, error);
+            this.log(`\u26A0\uFE0F \u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043D\u0435 \u0443\u0434\u0430\u043B\u0441\u044F`, error);
           }
         }
         return true;
