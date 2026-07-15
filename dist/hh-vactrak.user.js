@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      1.82
+// @version      1.83
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -26,14 +26,26 @@
     vacMemKey = `${this.vacMemKeyBase}__${window.location.search}`;
     constructor() {
     }
-    vacTrakIntervalMins = 3;
+    vacTrakIntervalMins = 2;
     jitterSeconds = 30;
     // ±30 секунд fuzzing
+    vacTrakUrl = "";
+    getSettings() {
+      const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
+      if (VACTRAK_URL) this.vacTrakUrl = VACTRAK_URL;
+      if (VACTRAK_INTERVAL) this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
+    }
     init() {
-      this.log(`
-Loaded.
+      this.getSettings();
+      this.log(
+        `Loaded.
 Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
-Key is "${this.vacMemKey}"`);
+Key is "${this.vacMemKey}"
+`.trim()
+      );
+      if (this.vacTrakUrl) {
+        this.log(`\u26A0\uFE0F Vacancies will be sent to vacTrak URL: ${this.vacTrakUrl}. `);
+      }
       if (document.body.innerHTML.includes(
         "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
       )) {
@@ -44,8 +56,8 @@ Key is "${this.vacMemKey}"`);
         this.processNewVacs();
       }
       this.cleanOutdatedVacs();
-      this.scheduleNextReload();
       this.animateTitleCircle();
+      this.scheduleNextReload();
     }
     // @ts-expect-error
     log = (...args) => {
@@ -64,11 +76,8 @@ Key is "${this.vacMemKey}"`);
         if (document.querySelector(`.chatik-integration_visible`)) {
           this.log(`Chatik detected. Not reloading the page`);
           this.scheduleNextReload();
-        } else if (this.getNewVacs().length) {
-          this.log(`New vacancies found. Not reloading the page`);
-          this.scheduleNextReload();
         } else {
-          this.log(`No new vacancies found. Reloading the page`);
+          this.log(`Reloading the page`);
           window.location.reload();
         }
       }, nextDelay);
@@ -91,7 +100,7 @@ Key is "${this.vacMemKey}"`);
       return newVacs;
     }
     /** Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление */
-    processNewVacs() {
+    async processNewVacs() {
       const newVacs = this.getNewVacs();
       const vacMem = this.getVacMem();
       if (newVacs.length) {
@@ -138,6 +147,23 @@ Key is "${this.vacMemKey}"`);
         });
         this.animateTitleCircle("\u26A0\uFE0F");
         this.setVacMem(vacMem);
+        if (this.vacTrakUrl) {
+          try {
+            let baseUrl = localStorage.VACTRAK_URL;
+            let res = await fetch(`${baseUrl}/api/hh/vac`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json"
+              },
+              body: JSON.stringify({ id: 123 })
+            });
+            let resJson = await res.json();
+            this.log(`\u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043E\u0442\u0432\u0435\u0442\u0438\u043B`, resJson);
+          } catch (error) {
+            this.log(`\u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043D\u0435 \u0443\u0434\u0430\u043B\u0441\u044F`, error);
+          }
+        }
         return true;
       }
       return false;
@@ -267,4 +293,14 @@ Key is "${this.vacMemKey}"`);
     }
   };
   new VacTrak().init();
+  function arrToChunks(arr, size) {
+    if (size <= 0 || !arr.length) return [];
+    return arr.reduce((chunks, item, index) => {
+      if (index % size === 0) {
+        chunks.push([]);
+      }
+      chunks[chunks.length - 1].push(item);
+      return chunks;
+    }, []);
+  }
 })();
