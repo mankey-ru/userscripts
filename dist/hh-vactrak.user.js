@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      2.0.0
+// @version      2.1.0
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -124,9 +124,11 @@ Key is "${this.vacMemKey}"
                 `[data-qa='vacancy-serp__vacancy-employer-text']`
               );
               newVacDetails.push({
-                id: +vacId,
+                id_ext: vacId,
                 title: vacNameEl?.textContent.trim() || "<notitle>",
-                company: vacCompanyEl?.textContent.trim() || "<nocompany>"
+                company: vacCompanyEl?.textContent.trim() || "<nocompany>",
+                filter_json: this.getFilterJson(),
+                source: "hh"
               });
             }
           });
@@ -158,14 +160,13 @@ Key is "${this.vacMemKey}"
         this.setVacMem(vacMem);
         if (this.vacTrakUrl) {
           try {
-            let res = await fetch(`${this.vacTrakUrl}/api/hh/vac`, {
+            let res = await fetch(`${this.vacTrakUrl}/api/vac`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 Accept: "application/json"
               },
               body: JSON.stringify({
-                // filterParams: this.getFilterParams(),
                 vacancyList: newVacDetails
               })
             });
@@ -263,7 +264,7 @@ Key is "${this.vacMemKey}"
       fresh: "rgba(255, 255, 0, 0.2)",
       old: "rgba(222, 0, 11, 0.2)"
     };
-    getFilterParams = () => {
+    getFilterJson = () => {
       const params = {};
       new URLSearchParams(window.location.search).forEach((value, key) => {
         if (params[key]) {
