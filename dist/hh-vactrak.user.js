@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      2.1.0
+// @version      2.1.2
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -22,29 +22,27 @@
 
   // src/hh-vactrak.user.ts
   var VacTrak = class {
-    vacMemKeyBase = "vacMem";
-    vacMemKey = `${this.vacMemKeyBase}__${window.location.search}`;
-    constructor() {
-    }
     vacTrakIntervalMins = 2;
     jitterSeconds = 30;
     // ±30 секунд fuzzing
     vacTrakUrl = "";
-    getSettings() {
-      const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
-      if (VACTRAK_URL) this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, "").trim();
-      if (VACTRAK_INTERVAL) this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
-    }
-    init() {
-      if (new URLSearchParams(window.location.search).get("use_vactrak") !== "yes") {
+    constructor() {
+      const urlParams = this.getUrlParamsObj();
+      if (urlParams.use_vactrak !== "yes") {
         this.log("\u26A0\uFE0F VacTrak is disabled. Add `&use_vactrak=yes` to the URL to enable it.");
         return;
       }
-      this.getSettings();
+      const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
+      if (VACTRAK_URL) {
+        this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, "").trim();
+      }
+      if (VACTRAK_INTERVAL) {
+        this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
+      }
       this.log(
         `Loaded.
 Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
-Key is "${this.vacMemKey}"
+Storage key is "${this.getVacMemKey()}"
 `.trim()
       );
       if (this.vacTrakUrl) {
@@ -63,6 +61,15 @@ Key is "${this.vacMemKey}"
       this.animateTitleCircle();
       this.scheduleNextReload();
     }
+    getVacMemKey = () => {
+      const vacMemKeyPrefix = "vacTrak";
+      const keySuffix = this.getSearchKey() || window.location.search;
+      return `${vacMemKeyPrefix}__${keySuffix}`;
+    };
+    getSearchKey = () => {
+      const urlParams = this.getUrlParamsObj();
+      return typeof urlParams?.vactrak_search_key === "string" ? urlParams.vactrak_search_key : "";
+    };
     // @ts-expect-error
     log = (...args) => {
       console.log(`[VacTrak]`, ...args);
@@ -127,8 +134,9 @@ Key is "${this.vacMemKey}"
                 id_ext: vacId,
                 title: vacNameEl?.textContent.trim() || "<notitle>",
                 company: vacCompanyEl?.textContent.trim() || "<nocompany>",
-                filter_json: this.getFilterJson(),
-                source: "hh"
+                filter_json: this.getUrlParamsObj(),
+                source: "hh",
+                search_key: this.getSearchKey()
               });
             }
           });
@@ -203,7 +211,7 @@ Key is "${this.vacMemKey}"
     }
     /** Получить память о вакансиях */
     getVacMem() {
-      const stored = localStorage.getItem(this.vacMemKey);
+      const stored = localStorage.getItem(this.getVacMemKey());
       if (!stored) {
         return {};
       }
@@ -220,11 +228,11 @@ Key is "${this.vacMemKey}"
     }
     /** Запомнить вакансии в localStorage */
     setVacMem(vacMem) {
-      localStorage.setItem(this.vacMemKey, JSON.stringify(vacMem));
+      localStorage.setItem(this.getVacMemKey(), JSON.stringify(vacMem));
     }
     /** Очистить вакансии */
     clearVacMem() {
-      localStorage.removeItem(this.vacMemKey);
+      localStorage.removeItem(this.getVacMemKey());
       window.location.reload();
     }
     /** Запускает progress bar сверху экрана */
@@ -264,7 +272,7 @@ Key is "${this.vacMemKey}"
       fresh: "rgba(255, 255, 0, 0.2)",
       old: "rgba(222, 0, 11, 0.2)"
     };
-    getFilterJson = () => {
+    getUrlParamsObj = () => {
       const params = {};
       new URLSearchParams(window.location.search).forEach((value, key) => {
         if (params[key]) {
@@ -315,7 +323,7 @@ Key is "${this.vacMemKey}"
       }, 1e3);
     }
   };
-  new VacTrak().init();
+  new VacTrak();
   function arrToChunks(arr, size) {
     if (size <= 0 || !arr.length) return [];
     return arr.reduce((chunks, item, index) => {
