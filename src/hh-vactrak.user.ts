@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
 // @author       mankey-ru
 // @namespace    mankey-ru/hh-vactrak
-// @version      2.0.0
+// @version      2.1.0
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
@@ -133,8 +133,7 @@ Key is "${this.vacMemKey}"
 		if (newVacs.length) {
 			// сортируем
 			// Object.entries(vacMem).sort(([, a], [, b]) => new Date(a) - new Date(b))
-			type VacDetails = { id: number; title: string; company: string };
-			const newVacDetails: VacDetails[] = [];
+			const newVacDetails: CreateVacancyDto[] = [];
 			const newVacIds = newVacs.map((vacId) => vacId);
 			if (newVacs.length) {
 				newVacs.forEach((vacId, index) => {
@@ -150,9 +149,11 @@ Key is "${this.vacMemKey}"
 							`[data-qa='vacancy-serp__vacancy-employer-text']`,
 						);
 						newVacDetails.push({
-							id: +vacId,
+							id_ext: vacId,
 							title: vacNameEl?.textContent.trim() || '<notitle>',
 							company: vacCompanyEl?.textContent.trim() || '<nocompany>',
+							filter_json: this.getFilterJson(),
+							source: 'hh',
 						});
 					}
 				});
@@ -195,15 +196,14 @@ Key is "${this.vacMemKey}"
 
 			if (this.vacTrakUrl) {
 				try {
-					let res = await fetch(`${this.vacTrakUrl}/api/hh/vac`, {
+					let res = await fetch(`${this.vacTrakUrl}/api/vac`, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
 							Accept: 'application/json',
 						},
 						body: JSON.stringify({
-							// filterParams: this.getFilterParams(),
-							vacancyList: newVacDetails
+							vacancyList: newVacDetails,
 						}),
 					});
 					let resJson = await res.json();
@@ -327,7 +327,7 @@ Key is "${this.vacMemKey}"
 		old: 'rgba(222, 0, 11, 0.2)',
 	};
 
-	private getFilterParams = () => {
+	private getFilterJson = () => {
 		const params: Record<string, string | string[]> = {};
 		new URLSearchParams(window.location.search).forEach((value, key) => {
 			if (params[key]) {
@@ -418,3 +418,19 @@ export function arrToChunks<T>(arr: readonly T[], size: number): T[][] {
 		return chunks;
 	}, [] as T[][]);
 }
+
+
+type CreateVacancyDto = {
+	/** vacancy id на хедхантере */
+	id_ext: string;
+	/** имя вакансии */
+	title: string;
+	/** имя компании */
+	company: string;
+	/** фильтр вакансий */
+	filter_json: FilterJson;
+	/** источник */
+	source: 'hh' | 'habr';
+}
+
+type FilterJson = Record<string, string | string[]>;
