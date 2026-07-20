@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      2.1.3
+// @version      2.1.4
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -18,7 +18,7 @@
 
 import { repoUrl } from './_shared.js';
 
-const sourceAdapters: Record<Source, SourceAdapter> = {
+const sourceAdapters: Record<CreateVacancyDto['source'], SourceAdapter> = {
 	hh: {
 		getVacIds() {
 			const vacEls = document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`);
@@ -80,7 +80,7 @@ class VacTrak {
 	private vacTrakIntervalMins = 2;
 	private jitterSeconds = 30; // ±30 секунд fuzzing
 	private vacTrakUrl = '';
-	private source: Source = window.location.hostname.includes('.habr.') ? 'habr' : 'hh';
+	private source: CreateVacancyDto['source'] = window.location.hostname.includes('.habr.') ? 'habr' : 'hh';
 	private page: SourceAdapter = sourceAdapters[this.source];
 
 	constructor() {
@@ -122,6 +122,9 @@ Storage key is "${this.getVacMemKey()}"
 		if (this.getNewVacs().length) {
 			this.processNewVacs();
 		}
+
+		const titlePrefix = this.getSearchKey() || 'VacTrak';
+		document.title = `【${titlePrefix}】${document.title}`;
 
 		this.cleanOutdatedVacs();
 		this.animateTitleCircle();
@@ -494,9 +497,6 @@ export function arrToChunks<T>(arr: readonly T[], size: number): T[][] {
 	}, [] as T[][]);
 }
 
-const SOURCES = ['hh', 'habr'] as const;
-type Source = (typeof SOURCES)[number]; // 'hh' | 'habr'
-
 type CreateVacancyDto = {
 	/** vacancy id на хедхантере */
 	id_ext: string;
@@ -507,7 +507,7 @@ type CreateVacancyDto = {
 	/** фильтр вакансий */
 	filter_json: FilterJson;
 	/** источник */
-	source: Source;
+	source:  'hh' | 'habr';
 	/** ключ поискового запроса */
 	search_key?: string;
 };
