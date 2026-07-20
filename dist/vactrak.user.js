@@ -1,0 +1,386 @@
+// ==UserScript==
+// @name         [VACTRAK] Vacancy Tracker
+// @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
+// @author       mankey-ru
+// @namespace    mankey-ru/vactrak-usercript
+// @version      2.1.2
+// @match        https://hh.ru/search/vacancy?*
+// @match        https://hh.uz/search/vacancy?*
+// @match        https://hh1.az/search/vacancy?*
+// @match        https://rabota.by/search/vacancy?*
+// @match        https://career.habr.com/vacancies?*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=hh.ru
+// @grant        GM_notification
+// @grant        GM_openInTab
+// @grant        unsafeWindow
+// @downloadURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/vactrak.user.js
+// ==/UserScript==
+
+
+"use strict";
+(() => {
+  // src/_shared.ts
+  var repoUrl = "https://github.com/mankey-ru/userscripts";
+
+  // src/vactrak.user.ts
+  var VacTrak = class {
+    vacTrakIntervalMins = 2;
+    jitterSeconds = 30;
+    // ±30 секунд fuzzing
+    vacTrakUrl = "";
+    source = window.location.hostname.includes(".habr.") ? "habr" : "hh";
+    constructor() {
+      const urlParams = this.getUrlParamsObj();
+      if (urlParams.use_vactrak !== "yes") {
+        this.log("\u26A0\uFE0F VacTrak is disabled. Add `&use_vactrak=yes` to the URL to enable it.");
+        return;
+      }
+      const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
+      if (VACTRAK_URL) {
+        this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, "").trim();
+      }
+      if (VACTRAK_INTERVAL) {
+        this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
+      }
+      this.log(
+        `Loaded.
+Source is "${this.source}".
+Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
+Storage key is "${this.getVacMemKey()}"
+`.trim()
+      );
+      if (this.vacTrakUrl) {
+        this.log(`\u26A0\uFE0F Vacancies will be sent to vacTrak URL: ${this.vacTrakUrl}. `);
+      }
+      if (document.body.innerHTML.includes(
+        "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
+      )) {
+        unsafeWindow.location.reload();
+      }
+      unsafeWindow.vacTrak = this;
+      if (this.getNewVacs().length) {
+        this.processNewVacs();
+      }
+      this.cleanOutdatedVacs();
+      this.animateTitleCircle();
+      this.scheduleNextReload();
+    }
+    /** [SRC-DEP] Получить все id вакансий на текущей странице	 */
+    getVacIdsOnPage() {
+      if (this.source === "hh") {
+        const vacEls = document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`);
+        return Array.from(vacEls).map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id).filter((id) => typeof id === "string");
+      } else if (this.source === "habr") {
+        const vacEls = document.querySelectorAll(`[data-vacancy-card]`);
+        return Array.from(vacEls).map((el) => el.getAttribute("data-vacancy-id")).filter((id) => typeof id === "string");
+      } else throw new Error(`Unknown source: ${this.source}`);
+    }
+    /** [SRC-DEP] Получить элемент компании в списке */
+    getVacEl(vacId) {
+      if (this.source === "hh") {
+        return document.getElementById(vacId);
+      } else if (this.source === "habr") {
+        return document.querySelector(`[data-vacancy-card][data-vacancy-id="${vacId}"]`);
+      } else throw new Error(`Unknown source: ${this.source}`);
+    }
+    /** [SRC-DEP] Получить название вакансии	 */
+    getVacNameEl(vacEl) {
+      if (this.source === "hh") {
+        return vacEl.querySelector(`[data-qa='serp-item__title-text']`);
+      } else if (this.source === "habr") {
+        return vacEl.querySelector(`.vacancy-card__title-link`);
+      } else throw new Error(`Unknown source: ${this.source}`);
+    }
+    /** [SRC-DEP] Получить название компании	 */
+    getCompanyEl(vacEl) {
+      if (this.source === "hh") {
+        return vacEl.querySelector(`[data-qa='vacancy-serp__vacancy-employer-text']`);
+      } else if (this.source === "habr") {
+        return vacEl.querySelector(`.vacancy-card__company .link-comp`);
+      } else throw new Error(`Unknown source: ${this.source}`);
+    }
+    /** [SRC-DEP] Есть ли элемент, который блокирует перезагрузку страницы	 */
+    getReloadBlockingElements() {
+      if (this.source === "hh") {
+        const el = document.querySelector(`.chatik-integration_visible`);
+        return !!el;
+      } else if (this.source === "habr") {
+        return false;
+      } else throw new Error(`Unknown source: ${this.source}`);
+    }
+    /** [SRC-DEP] Получить url вакансии	 */
+    getVacUrl(vacId) {
+      if (this.source === "hh") {
+        return `https://hh.ru/vacancy/${vacId}`;
+      } else if (this.source === "habr") {
+        return `https://career.habr.com/vacancies/${vacId}`;
+      } else throw new Error(`Unknown source: ${this.source}`);
+    }
+    getVacMemKey = () => {
+      const vacMemKeyPrefix = "vacTrak";
+      const keySuffix = this.getSearchKey() || window.location.search;
+      return `${vacMemKeyPrefix}__${keySuffix}`;
+    };
+    getSearchKey = () => {
+      const urlParams = this.getUrlParamsObj();
+      return typeof urlParams?.vactrak_search_key === "string" ? urlParams.vactrak_search_key : "";
+    };
+    // @ts-expect-error
+    log = (...args) => {
+      console.log(`[VacTrak]`, ...args);
+    };
+    /** Рекурсивный таймер с jitter */
+    scheduleNextReload() {
+      const baseMs = 1e3 * 60 * this.vacTrakIntervalMins;
+      const jitterMs = Math.floor(Math.random() * (2 * this.jitterSeconds * 1e3 + 1)) - this.jitterSeconds * 1e3;
+      const nextDelay = baseMs + jitterMs;
+      this.topScreenProgressBar(nextDelay);
+      this.log(
+        `\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F \u043F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0447\u0435\u0440\u0435\u0437 ${(nextDelay / 1e3).toFixed(1)} \u0441\u0435\u043A (jitter ${jitterMs} \u043C\u0441)`
+      );
+      setTimeout(() => {
+        if (this.getReloadBlockingElements()) {
+          this.log(`Reload blocking elements found. Not reloading the page`);
+          this.scheduleNextReload();
+        } else {
+          this.log(`Reloading the page`);
+          window.location.reload();
+        }
+      }, nextDelay);
+    }
+    /** Получить новые вакансии, которых нет в localStorage */
+    getUnsavedVacIds() {
+      const vacMem = this.getVacMem();
+      const vacIdsOnPage = this.getVacIdsOnPage();
+      const newVacs = vacIdsOnPage.filter((id) => !vacMem[id]);
+      return newVacs;
+    }
+    /** Получить новые вакансии */
+    getNewVacs() {
+      const unsavedVacIds = this.getUnsavedVacIds();
+      const newVacs = unsavedVacIds.filter((vacId) => !this.isNotSuitable(vacId));
+      return newVacs;
+    }
+    /** Обрабатывает новые вакансии: сохраняет их в localStorage, подсвечивает на странице и показывает уведомление */
+    async processNewVacs() {
+      const newVacs = this.getNewVacs();
+      const vacMem = this.getVacMem();
+      if (newVacs.length) {
+        const newVacDetails = [];
+        const newVacIds = newVacs.map((vacId) => vacId);
+        if (newVacs.length) {
+          newVacs.forEach((vacId, index) => {
+            vacMem[vacId] = (/* @__PURE__ */ new Date()).toISOString();
+            const vacEl = this.getVacEl(vacId);
+            if (vacEl) {
+              if (index === 0) {
+                vacEl.scrollIntoView();
+              }
+              vacEl.style.backgroundColor = this.colors.fresh;
+              const vacNameEl = this.getVacNameEl(vacEl);
+              const vacCompanyEl = this.getCompanyEl(vacEl);
+              newVacDetails.push({
+                id_ext: vacId,
+                title: vacNameEl?.textContent.trim() || "<notitle>",
+                company: vacCompanyEl?.textContent.trim() || "<nocompany>",
+                filter_json: this.getUrlParamsObj(),
+                source: this.source,
+                search_key: this.getSearchKey()
+              });
+            }
+          });
+          newVacs.reverse()[0];
+        }
+        new Audio(`${repoUrl}/assets/sound/kirov.mp3`).play().catch((err) => this.log("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0432\u043E\u0441\u043F\u0440\u043E\u0438\u0437\u0432\u0435\u0441\u0442\u0438 \u0437\u0432\u0443\u043A", err));
+        GM_notification({
+          title: `\u041D\u043E\u0432\u044B\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438 (${newVacDetails.length})`,
+          text: `${newVacDetails.map((d) => `${d.title} @ ${d.company}`).join(";\n")}`,
+          // timeout: 60 * 60 * 1000,
+          highlight: true,
+          silent: false,
+          onclick: () => {
+            newVacIds.forEach((vacId, index) => {
+              setTimeout(
+                () => {
+                  GM_openInTab(this.getVacUrl(vacId), {
+                    active: index === 0,
+                    insert: true
+                  });
+                },
+                300 * (index + 1)
+              );
+            });
+            unsafeWindow.focus();
+          }
+        });
+        this.animateTitleCircle("\u26A0\uFE0F");
+        this.setVacMem(vacMem);
+        if (this.vacTrakUrl) {
+          try {
+            let res = await fetch(`${this.vacTrakUrl}/api/vac`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Accept: "application/json"
+              },
+              body: JSON.stringify({
+                vacancyList: newVacDetails
+              })
+            });
+            let resJson = await res.json();
+            this.log(`\u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043E\u0442\u0432\u0435\u0442\u0438\u043B`, resJson);
+          } catch (error) {
+            this.log(`\u26A0\uFE0F \u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043D\u0435 \u0443\u0434\u0430\u043B\u0441\u044F`, error);
+          }
+        }
+        return true;
+      }
+      return false;
+    }
+    /** Удаляет из localStorage неподходящие вакансии */
+    cleanOutdatedVacs() {
+      const vacMem = this.getVacMem();
+      const vacIdsOnPage = this.getVacIdsOnPage();
+      for (const vacId in vacMem) {
+        if (this.isNotSuitable(vacId)) {
+          delete vacMem[vacId];
+        }
+      }
+      this.setVacMem(vacMem);
+    }
+    isNotSuitable(vacId) {
+      const vacMem = this.getVacMem();
+      const vacEl = document.getElementById(vacId);
+      return isOld(vacMem[vacId]) || vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]') || vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_discard"]');
+      function isOld(ds1, maxDays = 30) {
+        const msInDay = 1e3 * 60 * 60 * 24;
+        const diffInDays = Math.abs(Date.now() - new Date(ds1).getTime()) / msInDay;
+        return Math.floor(diffInDays) >= maxDays;
+      }
+    }
+    /** Получить память о вакансиях */
+    getVacMem() {
+      const stored = localStorage.getItem(this.getVacMemKey());
+      if (!stored) {
+        return {};
+      }
+      try {
+        const parsed = JSON.parse(stored);
+        if (typeof parsed !== "object" || parsed === null) {
+          return {};
+        }
+        return parsed;
+      } catch (e) {
+        console.warn("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0440\u0430\u0441\u043F\u0430\u0440\u0441\u0438\u0442\u044C VacMem \u0438\u0437 localStorage", e);
+        return {};
+      }
+    }
+    /** Запомнить вакансии в localStorage */
+    setVacMem(vacMem) {
+      localStorage.setItem(this.getVacMemKey(), JSON.stringify(vacMem));
+    }
+    /** Очистить вакансии */
+    clearVacMem() {
+      localStorage.removeItem(this.getVacMemKey());
+      window.location.reload();
+    }
+    /** Запускает progress bar сверху экрана */
+    topScreenProgressBar(durationMs = 6e4, color = "#00ff00") {
+      let bar = document.getElementById("progress-bar-top");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "progress-bar-top";
+        bar.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 3px;
+                background: ${color};
+                width: 0%;
+                z-index: 999999;
+                transition: width 0.05s linear;
+                pointer-events: none;
+            `;
+        document.documentElement.appendChild(bar);
+      }
+      bar.style.width = "0%";
+      bar.style.background = color;
+      const startTime = Date.now();
+      const interval = 50;
+      const timer = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / durationMs * 100, 100);
+        bar.style.width = `${progress}%`;
+        if (progress >= 100) {
+          clearInterval(timer);
+        }
+      }, interval);
+      return { bar, timer };
+    }
+    colors = {
+      fresh: "rgba(255, 255, 0, 0.2)",
+      old: "rgba(222, 0, 11, 0.2)"
+    };
+    getUrlParamsObj = () => {
+      const params = {};
+      new URLSearchParams(window.location.search).forEach((value, key) => {
+        if (params[key]) {
+          params[key] = Array.isArray(params[key]) ? [...params[key], value] : [params[key], value];
+        } else {
+          params[key] = value;
+        }
+      });
+      return params;
+    };
+    /** Делает мигалку. Если передать customEmoji — останавливает анимацию и ставит его. */
+    animateTitleCircle(customEmoji) {
+      let faviconBlinkInterval = void 0;
+      let isBlinking = false;
+      let currentIndex = 0;
+      const emojis = ["\u{1F534}", "\u2B55"];
+      const setFaviconEmoji = (emoji) => {
+        document.querySelectorAll('link[rel*="icon"]').forEach((link2) => link2.remove());
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><text x="50%" y="50%" font-size="48" text-anchor="middle" dominant-baseline="middle">${emoji}</text></svg>`;
+        const dataUrl = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+        const link = document.createElement("link");
+        link.rel = "icon";
+        link.type = "image/svg+xml";
+        link.href = dataUrl;
+        document.head.appendChild(link);
+      };
+      if (customEmoji) {
+        if (faviconBlinkInterval) {
+          clearInterval(faviconBlinkInterval);
+          faviconBlinkInterval = void 0;
+        }
+        isBlinking = false;
+        setFaviconEmoji(customEmoji);
+        return;
+      }
+      if (isBlinking) {
+        clearInterval(faviconBlinkInterval);
+        faviconBlinkInterval = void 0;
+        isBlinking = false;
+        return;
+      }
+      isBlinking = true;
+      currentIndex = 0;
+      setFaviconEmoji(emojis[0]);
+      faviconBlinkInterval = setInterval(() => {
+        currentIndex = (currentIndex + 1) % emojis.length;
+        setFaviconEmoji(emojis[currentIndex]);
+      }, 1e3);
+    }
+  };
+  new VacTrak();
+  function arrToChunks(arr, size) {
+    if (size <= 0 || !arr.length) return [];
+    return arr.reduce((chunks, item, index) => {
+      if (index % size === 0) {
+        chunks.push([]);
+      }
+      chunks[chunks.length - 1].push(item);
+      return chunks;
+    }, []);
+  }
+})();

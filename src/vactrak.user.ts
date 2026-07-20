@@ -1,17 +1,19 @@
 // ==UserScript==
-// @name         [HH-VACTRAK] HH.ru vacancy tracker
-// @description  Reloads the page every N minutes and alerts you if there are new vacancies on the page since the last check. It uses localStorage to remember which vacancies have already been seen.
+// @name         [VACTRAK] Vacancy Tracker
+// @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
-// @namespace    mankey-ru/hh-vactrak
+// @namespace    mankey-ru/vactrak-usercript
 // @version      2.1.2
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
+// @match        https://hh1.az/search/vacancy?*
 // @match        https://rabota.by/search/vacancy?*
+// @match        https://career.habr.com/vacancies?*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=hh.ru
 // @grant        GM_notification
 // @grant        GM_openInTab
 // @grant        unsafeWindow
-// @downloadURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/hh-vactrak.user.js
+// @downloadURL    https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/vactrak.user.js
 // ==/UserScript==
 
 import { repoUrl } from './_shared.js';
@@ -20,6 +22,7 @@ class VacTrak {
 	private vacTrakIntervalMins = 2;
 	private jitterSeconds = 30; // ±30 секунд fuzzing
 	private vacTrakUrl = '';
+	private source: Source = window.location.hostname.includes('.habr.') ? 'habr' : 'hh';
 
 	constructor() {
 		const urlParams = this.getUrlParamsObj();
@@ -37,6 +40,7 @@ class VacTrak {
 
 		this.log(
 			`Loaded.
+Source is "${this.source}".
 Next check in: ${this.vacTrakIntervalMins} minute(s) ± ${this.jitterSeconds} sec jitter.
 Storage key is "${this.getVacMemKey()}"
 `.trim(),
@@ -65,6 +69,67 @@ Storage key is "${this.getVacMemKey()}"
 		this.scheduleNextReload();
 	}
 
+	/** [SRC-DEP] Получить все id вакансий на текущей странице	 */
+	private getVacIdsOnPage(): string[] {
+		if (this.source === 'hh') {
+			const vacEls = document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`);
+			return Array.from(vacEls)
+				.map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id)
+				.filter((id) => typeof id === 'string');
+		} else if (this.source === 'habr') {
+			const vacEls = document.querySelectorAll(`[data-vacancy-card]`);
+			return Array.from(vacEls)
+				.map((el) => el.getAttribute('data-vacancy-id'))
+				.filter((id) => typeof id === 'string');
+		} else throw new Error(`Unknown source: ${this.source}`);
+	}
+
+	/** [SRC-DEP] Получить элемент компании в списке */
+	private getVacEl(vacId: string): HTMLElement | null {
+		if (this.source === 'hh') {
+			return document.getElementById(vacId);
+		} else if (this.source === 'habr') {
+			return document.querySelector(`[data-vacancy-card][data-vacancy-id="${vacId}"]`);
+		} else throw new Error(`Unknown source: ${this.source}`);
+	}
+
+	/** [SRC-DEP] Получить название вакансии	 */
+	private getVacNameEl(vacEl: HTMLElement) {
+		if (this.source === 'hh') {
+			return vacEl.querySelector(`[data-qa='serp-item__title-text']`);
+		} else if (this.source === 'habr') {
+			return vacEl.querySelector(`.vacancy-card__title-link`);
+		} else throw new Error(`Unknown source: ${this.source}`);
+	}
+
+	/** [SRC-DEP] Получить название компании	 */
+	private getCompanyEl(vacEl: HTMLElement) {
+		if (this.source === 'hh') {
+			return vacEl.querySelector(`[data-qa='vacancy-serp__vacancy-employer-text']`);
+		} else if (this.source === 'habr') {
+			return vacEl.querySelector(`.vacancy-card__company .link-comp`);
+		} else throw new Error(`Unknown source: ${this.source}`);
+	}
+
+	/** [SRC-DEP] Есть ли элемент, который блокирует перезагрузку страницы	 */
+	private getReloadBlockingElements(): boolean {
+		if (this.source === 'hh') {
+			const el = document.querySelector(`.chatik-integration_visible`);
+			return !!el;
+		} else if (this.source === 'habr') {
+			return false;
+		} else throw new Error(`Unknown source: ${this.source}`);
+	}
+
+	/** [SRC-DEP] Получить url вакансии	 */
+	private getVacUrl(vacId: string) {
+		if (this.source === 'hh') {
+			return `https://hh.ru/vacancy/${vacId}`;
+		} else if (this.source === 'habr') {
+			return `https://career.habr.com/vacancies/${vacId}`;
+		} else throw new Error(`Unknown source: ${this.source}`);
+	}
+
 	private getVacMemKey = (): string => {
 		const vacMemKeyPrefix = 'vacTrak';
 		const keySuffix = this.getSearchKey() || window.location.search;
@@ -73,7 +138,9 @@ Storage key is "${this.getVacMemKey()}"
 
 	private getSearchKey = (): string => {
 		const urlParams = this.getUrlParamsObj();
-		return typeof urlParams?.vactrak_search_key === 'string' ? urlParams.vactrak_search_key : '';
+		return typeof urlParams?.vactrak_search_key === 'string'
+			? urlParams.vactrak_search_key
+			: '';
 	};
 
 	// @ts-expect-error
@@ -97,8 +164,8 @@ Storage key is "${this.getVacMemKey()}"
 		);
 
 		setTimeout(() => {
-			if (document.querySelector(`.chatik-integration_visible`)) {
-				this.log(`Chatik detected. Not reloading the page`);
+			if (this.getReloadBlockingElements()) {
+				this.log(`Reload blocking elements found. Not reloading the page`);
 				this.scheduleNextReload(); // продолжаем таймер
 			}
 			// else if (this.getNewVacs().length) {
@@ -110,13 +177,6 @@ Storage key is "${this.getVacMemKey()}"
 				window.location.reload();
 			}
 		}, nextDelay);
-	}
-
-	/** Получить все id вакансий на текущей странице	 */
-	private getVacIdsOnPage() {
-		return Array.from(document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`))
-			.map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id)
-			.filter((id) => typeof id === 'string');
 	}
 
 	/** Получить новые вакансии, которых нет в localStorage */
@@ -147,22 +207,20 @@ Storage key is "${this.getVacMemKey()}"
 			if (newVacs.length) {
 				newVacs.forEach((vacId, index) => {
 					vacMem[vacId] = new Date().toISOString() as IsoDateTimeString;
-					const vacEl = document.getElementById(vacId);
+					const vacEl = this.getVacEl(vacId);
 					if (vacEl) {
 						if (index === 0) {
 							vacEl.scrollIntoView();
 						}
 						vacEl.style.backgroundColor = this.colors.fresh;
-						const vacNameEl = vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-						const vacCompanyEl = vacEl.querySelector(
-							`[data-qa='vacancy-serp__vacancy-employer-text']`,
-						);
+						const vacNameEl = this.getVacNameEl(vacEl);
+						const vacCompanyEl = this.getCompanyEl(vacEl);
 						newVacDetails.push({
 							id_ext: vacId,
 							title: vacNameEl?.textContent.trim() || '<notitle>',
 							company: vacCompanyEl?.textContent.trim() || '<nocompany>',
 							filter_json: this.getUrlParamsObj(),
-							source: 'hh',
+							source: this.source,
 							search_key: this.getSearchKey(),
 						});
 					}
@@ -190,7 +248,7 @@ Storage key is "${this.getVacMemKey()}"
 						// открываем с дилеем, чтобы браузер не залупнулся :)
 						setTimeout(
 							() => {
-								GM_openInTab(`https://hh.ru/vacancy/${vacId}`, {
+								GM_openInTab(this.getVacUrl(vacId), {
 									active: index === 0,
 									insert: true,
 								});
@@ -404,6 +462,20 @@ Storage key is "${this.getVacMemKey()}"
 
 new VacTrak();
 
+/*
+ *
+ *
+ *
+ *
+ *  ===================================================================
+ *  							Типы
+ *  ===================================================================
+ *
+ *
+ *
+ *
+ */
+
 /** ID вакансии в виде строки, которая может быть использована как ключ в объекте */
 type VacIdString = `${number}`;
 /**
@@ -429,6 +501,9 @@ export function arrToChunks<T>(arr: readonly T[], size: number): T[][] {
 	}, [] as T[][]);
 }
 
+const SOURCES = ['hh', 'habr'] as const;
+type Source = (typeof SOURCES)[number]; // 'hh' | 'habr'
+
 type CreateVacancyDto = {
 	/** vacancy id на хедхантере */
 	id_ext: string;
@@ -439,7 +514,7 @@ type CreateVacancyDto = {
 	/** фильтр вакансий */
 	filter_json: FilterJson;
 	/** источник */
-	source: 'hh' | 'habr';
+	source: Source;
 	/** ключ поискового запроса */
 	search_key?: string;
 };

@@ -18,11 +18,13 @@
     "build": "node build.mjs",
     "start": "node build.mjs --devbuild",
     "dev": "node build.mjs --watch",
+    "format": "npx prettier --write \"src/**/*.{ts,js}\" \"test/**/*.{ts,js}\" \"*.{ts,js}\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
     "@types/tampermonkey": "^5.0.5",
     "esbuild": "^0.28.1",
+    "prettier": "^3.9.5",
     "typescript": "^7.0.2"
   }
 }

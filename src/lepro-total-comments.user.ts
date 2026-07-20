@@ -94,7 +94,7 @@ function parseComments() {
 		document.body.appendChild(style);
 	};
 
-	for (var i = ratings.length; i--; ) {
+	for (var i = ratings.length; i--;) {
 		if (ratings[i].rating / std_dev >= BEST_TRESHOLD) continue;
 
 		var comment = ratings[i].el.parentNode.parentNode.parentNode.parentNode;

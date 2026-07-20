@@ -27,18 +27,21 @@ init();
 // https://genius.com/Kiska-pesdineation-lyrics
 // https://genius.com/Olga-arefieva-and-kovcheg-nogin-square-lyrics - тут теряется последняя часть! терялась
 
-
-function init () {
+function init() {
 	if (window.self !== window.top) return; // это в айфрейме, там такой плеер есть
 	log(`userScript loaded for document ${document.location.href}`);
-	createButton(`Clean: Easy`, () => { cleanPage('EASY'); });
-	createButton(`Clean: Hardcore`, () => { cleanPage('HARDCORE'); });
+	createButton(`Clean: Easy`, () => {
+		cleanPage('EASY');
+	});
+	createButton(`Clean: Hardcore`, () => {
+		cleanPage('HARDCORE');
+	});
 }
 /**
  *
  * @param mode { 'EASY' | 'HARDCORE' }
  */
-function cleanPage (mode = 'EASY') {
+function cleanPage(mode = 'EASY') {
 	log(`cleanPage mode=${mode}`);
 
 	// сразу удаляем подвал, там может быть айфрейм
@@ -55,20 +58,38 @@ function cleanPage (mode = 'EASY') {
 	const songTitle = cleanTranslation(titleEl.textContent.trim());
 	const songArtist = cleanTranslation(artistEl.textContent.trim());
 
-	const artistFeatElAll = document.querySelector(`[class^="SongHeader-desktop__TwoColumnArtistContainer"]`)?.querySelectorAll?.('[class^="PortalTooltip__Container"]');
-	const artistFeatElFiltered = artistFeatElAll ? [...artistFeatElAll]?.filter?.(el => el.textContent?.trim()) : null;
-	const yearEl = document.querySelector('[class^="MetadataStats__Container"]')?.querySelector?.('[class^="LabelWithIcon__Label"]');
-	const artistFeatList = artistFeatElFiltered?.length ? artistFeatElFiltered.map(el => cleanTranslation(el.textContent.trim())).filter(artistFeatName => artistFeatName !== songArtist).join(', ') : ''; // дубли бывают в https://genius.com/Slipknot-gently-original-version-lyrics
+	const artistFeatElAll = document
+		.querySelector(`[class^="SongHeader-desktop__TwoColumnArtistContainer"]`)
+		?.querySelectorAll?.('[class^="PortalTooltip__Container"]');
+	const artistFeatElFiltered = artistFeatElAll
+		? [...artistFeatElAll]?.filter?.((el) => el.textContent?.trim())
+		: null;
+	const yearEl = document
+		.querySelector('[class^="MetadataStats__Container"]')
+		?.querySelector?.('[class^="LabelWithIcon__Label"]');
+	const artistFeatList = artistFeatElFiltered?.length
+		? artistFeatElFiltered
+				.map((el) => cleanTranslation(el.textContent.trim()))
+				.filter((artistFeatName) => artistFeatName !== songArtist)
+				.join(', ')
+		: ''; // дубли бывают в https://genius.com/Slipknot-gently-original-version-lyrics
 
 	const excludedElements = document.querySelectorAll(`[data-exclude-from-selection=true]`);
 	// @ts-expect-error
-	log(`excludedElements.innerText=`, Array.from(excludedElements).map(el => el.innerText.trim()).join(' | '));
-	excludedElements.forEach(el => el.remove());
+	log(
+		`excludedElements.innerText=`,
+		Array.from(excludedElements)
+			.map((el) => el.innerText.trim())
+			.join(' | '),
+	);
+	excludedElements.forEach((el) => el.remove());
 
 	const yearMatch = yearEl?.textContent?.match?.(/\b\d{4}\b/);
 	const songYear = yearMatch ? `${yearMatch[0]}` : '';
 
-	const cleanedLyricsHTML = Array.from(lyricsEls).map(el => getCleanedLyricsHTML(el)).join(`<!-- ${projName}: здесь разрыв -->`);;
+	const cleanedLyricsHTML = Array.from(lyricsEls)
+		.map((el) => getCleanedLyricsHTML(el))
+		.join(`<!-- ${projName}: здесь разрыв -->`);
 
 	// Clear the body
 	document.body.innerHTML = '';
@@ -89,7 +110,16 @@ function cleanPage (mode = 'EASY') {
 		colCount = 3;
 	}
 
-	console.log(`lineQty=`, lineQty, `colCount=`, colCount, `threshold1=`, threshold1, `threshold2=`, threshold2);
+	console.log(
+		`lineQty=`,
+		lineQty,
+		`colCount=`,
+		colCount,
+		`threshold1=`,
+		threshold1,
+		`threshold2=`,
+		threshold2,
+	);
 
 	const container = document.createElement('div');
 	container.id = 'clean-print-container';
@@ -112,7 +142,7 @@ function cleanPage (mode = 'EASY') {
 /**
  * @param mode { 'EASY' | 'HARDCORE' }
  */
-function createStyle (mode = 'EASY') {
+function createStyle(mode = 'EASY') {
 	// CSS Reset and Multi-column support with serif font
 	const style = document.createElement('style');
 	const isEasy = mode === 'EASY';
@@ -219,22 +249,27 @@ function getCleanedLyricsHTML(lyricsEl: Element): string {
 	cleanedLyricsHTML = cleanedLyricsHTML.replace(/<i[^>]*>(.*?)<\/i>/gis, '$1');
 
 	// Бьём на абзацы
-	cleanedLyricsHTML = cleanedLyricsHTML.split(/<br\s*\/?>\s*<br\s*\/?>/gi).map(part => `<p class="lyr-par">${part.trim()}</p>`).join('');
+	cleanedLyricsHTML = cleanedLyricsHTML
+		.split(/<br\s*\/?>\s*<br\s*\/?>/gi)
+		.map((part) => `<p class="lyr-par">${part.trim()}</p>`)
+		.join('');
 
 	// часто есть такая отдельная фраза хз зачем. Если после звездочки сунуть ? то будет non-greedy
 	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, '');
 	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, '');
 	cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, '');
 
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[(.*?)\]<br\s*\/?>/gis, '<span class="lyr-subdiv">$1</span>');
+	cleanedLyricsHTML = cleanedLyricsHTML.replace(
+		/\[(.*?)\]<br\s*\/?>/gis,
+		'<span class="lyr-subdiv">$1</span>',
+	);
 
 	cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, ' ');
 	//cleanedLyricsHTML = cleanedLyricsHTML.replace(/(<br\s*\/?>\s*)+/gi, '<br>');
 	return cleanedLyricsHTML;
 }
 
-
-function createButton (text = 'текст не указан', onClick = () => alert('onClick не указан')) {
+function createButton(text = 'текст не указан', onClick = () => alert('onClick не указан')) {
 	// Create floating button
 	const button = document.createElement('button');
 	button.textContent = text;
@@ -255,17 +290,15 @@ function createButton (text = 'текст не указан', onClick = () => al
 	document.body.appendChild(button);
 }
 
-
 // @ts-expect-error
-function log (...args) {
-	if (logFlag)
-		console.log(`[${projName}]`, ...args);
+function log(...args) {
+	if (logFlag) console.log(`[${projName}]`, ...args);
 }
 
 /**
  * Удаление перевода кототорый джениус суёт русским артистам типа `Игорь Жирнов (Igor Zhirnov)`
  * @param {string} str */
-function cleanTranslation (str: string): string {
+function cleanTranslation(str: string): string {
 	const cyrillicWithEnglishParensRegex = /^([А-Яа-яеЁ\s]+)\s+\([A-Za-z\s]+\)$/;
 	// If matches, return only the Cyrillic part (group 1); else return original
 	const match = str.match(cyrillicWithEnglishParensRegex);

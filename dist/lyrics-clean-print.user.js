@@ -44,12 +44,14 @@
     const yearEl = document.querySelector('[class^="MetadataStats__Container"]')?.querySelector?.('[class^="LabelWithIcon__Label"]');
     const artistFeatList = artistFeatElFiltered?.length ? artistFeatElFiltered.map((el) => cleanTranslation(el.textContent.trim())).filter((artistFeatName) => artistFeatName !== songArtist).join(", ") : "";
     const excludedElements = document.querySelectorAll(`[data-exclude-from-selection=true]`);
-    log(`excludedElements.innerText=`, Array.from(excludedElements).map((el) => el.innerText.trim()).join(" | "));
+    log(
+      `excludedElements.innerText=`,
+      Array.from(excludedElements).map((el) => el.innerText.trim()).join(" | ")
+    );
     excludedElements.forEach((el) => el.remove());
     const yearMatch = yearEl?.textContent?.match?.(/\b\d{4}\b/);
     const songYear = yearMatch ? `${yearMatch[0]}` : "";
     const cleanedLyricsHTML = Array.from(lyricsEls).map((el) => getCleanedLyricsHTML(el)).join(`<!-- ${projName}: \u0437\u0434\u0435\u0441\u044C \u0440\u0430\u0437\u0440\u044B\u0432 -->`);
-    ;
     document.body.innerHTML = "";
     const lineQty = cleanedLyricsHTML.split("<br>").length;
     const threshold1 = 20;
@@ -61,7 +63,16 @@
     } else {
       colCount = 3;
     }
-    console.log(`lineQty=`, lineQty, `colCount=`, colCount, `threshold1=`, threshold1, `threshold2=`, threshold2);
+    console.log(
+      `lineQty=`,
+      lineQty,
+      `colCount=`,
+      colCount,
+      `threshold1=`,
+      threshold1,
+      `threshold2=`,
+      threshold2
+    );
     const container = document.createElement("div");
     container.id = "clean-print-container";
     container.style.padding = "20px";
@@ -181,7 +192,10 @@
     cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, "");
     cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, "");
     cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, "");
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[(.*?)\]<br\s*\/?>/gis, '<span class="lyr-subdiv">$1</span>');
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(
+      /\[(.*?)\]<br\s*\/?>/gis,
+      '<span class="lyr-subdiv">$1</span>'
+    );
     cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, " ");
     return cleanedLyricsHTML;
   }
@@ -205,8 +219,7 @@
     document.body.appendChild(button);
   }
   function log(...args) {
-    if (logFlag)
-      console.log(`[${projName}]`, ...args);
+    if (logFlag) console.log(`[${projName}]`, ...args);
   }
   function cleanTranslation(str) {
     const cyrillicWithEnglishParensRegex = /^([А-Яа-яеЁ\s]+)\s+\([A-Za-z\s]+\)$/;
