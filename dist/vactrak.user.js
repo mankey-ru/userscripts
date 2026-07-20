@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      2.1.2
+// @version      2.1.3
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -23,12 +23,63 @@
   var repoUrl = "https://github.com/mankey-ru/userscripts";
 
   // src/vactrak.user.ts
+  var sourceAdapters = {
+    hh: {
+      getVacIds() {
+        const vacEls = document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`);
+        return Array.from(vacEls).map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id).filter((id) => typeof id === "string");
+      },
+      getVacEl(vacId) {
+        return document.getElementById(vacId);
+      },
+      getVacNameEl(vacEl) {
+        return vacEl.querySelector(`[data-qa='serp-item__title-text']`);
+      },
+      getCompanyEl(vacEl) {
+        return vacEl.querySelector(`[data-qa='vacancy-serp__vacancy-employer-text']`);
+      },
+      hasReloadBlockingElements() {
+        return !!document.querySelector(`.chatik-integration_visible`);
+      },
+      getVacUrl(vacId) {
+        return `https://hh.ru/vacancy/${vacId}`;
+      },
+      hasUnsuitableMarkers(vacEl) {
+        return !!(vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]') || vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_discard"]'));
+      }
+    },
+    habr: {
+      getVacIds() {
+        const vacEls = document.querySelectorAll(`[data-vacancy-card]`);
+        return Array.from(vacEls).map((el) => el.getAttribute("data-vacancy-id")).filter((id) => typeof id === "string");
+      },
+      getVacEl(vacId) {
+        return document.querySelector(`[data-vacancy-card][data-vacancy-id="${vacId}"]`);
+      },
+      getVacNameEl(vacEl) {
+        return vacEl.querySelector(`.vacancy-card__title-link`);
+      },
+      getCompanyEl(vacEl) {
+        return vacEl.querySelector(`.vacancy-card__company .link-comp`);
+      },
+      hasReloadBlockingElements() {
+        return false;
+      },
+      getVacUrl(vacId) {
+        return `https://career.habr.com/vacancies/${vacId}`;
+      },
+      hasUnsuitableMarkers() {
+        return false;
+      }
+    }
+  };
   var VacTrak = class {
     vacTrakIntervalMins = 2;
     jitterSeconds = 30;
     // ±30 секунд fuzzing
     vacTrakUrl = "";
     source = window.location.hostname.includes(".habr.") ? "habr" : "hh";
+    page = sourceAdapters[this.source];
     constructor() {
       const urlParams = this.getUrlParamsObj();
       if (urlParams.use_vactrak !== "yes") {
@@ -65,57 +116,6 @@ Storage key is "${this.getVacMemKey()}"
       this.animateTitleCircle();
       this.scheduleNextReload();
     }
-    /** [SRC-DEP] Получить все id вакансий на текущей странице	 */
-    getVacIdsOnPage() {
-      if (this.source === "hh") {
-        const vacEls = document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`);
-        return Array.from(vacEls).map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id).filter((id) => typeof id === "string");
-      } else if (this.source === "habr") {
-        const vacEls = document.querySelectorAll(`[data-vacancy-card]`);
-        return Array.from(vacEls).map((el) => el.getAttribute("data-vacancy-id")).filter((id) => typeof id === "string");
-      } else throw new Error(`Unknown source: ${this.source}`);
-    }
-    /** [SRC-DEP] Получить элемент компании в списке */
-    getVacEl(vacId) {
-      if (this.source === "hh") {
-        return document.getElementById(vacId);
-      } else if (this.source === "habr") {
-        return document.querySelector(`[data-vacancy-card][data-vacancy-id="${vacId}"]`);
-      } else throw new Error(`Unknown source: ${this.source}`);
-    }
-    /** [SRC-DEP] Получить название вакансии	 */
-    getVacNameEl(vacEl) {
-      if (this.source === "hh") {
-        return vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-      } else if (this.source === "habr") {
-        return vacEl.querySelector(`.vacancy-card__title-link`);
-      } else throw new Error(`Unknown source: ${this.source}`);
-    }
-    /** [SRC-DEP] Получить название компании	 */
-    getCompanyEl(vacEl) {
-      if (this.source === "hh") {
-        return vacEl.querySelector(`[data-qa='vacancy-serp__vacancy-employer-text']`);
-      } else if (this.source === "habr") {
-        return vacEl.querySelector(`.vacancy-card__company .link-comp`);
-      } else throw new Error(`Unknown source: ${this.source}`);
-    }
-    /** [SRC-DEP] Есть ли элемент, который блокирует перезагрузку страницы	 */
-    getReloadBlockingElements() {
-      if (this.source === "hh") {
-        const el = document.querySelector(`.chatik-integration_visible`);
-        return !!el;
-      } else if (this.source === "habr") {
-        return false;
-      } else throw new Error(`Unknown source: ${this.source}`);
-    }
-    /** [SRC-DEP] Получить url вакансии	 */
-    getVacUrl(vacId) {
-      if (this.source === "hh") {
-        return `https://hh.ru/vacancy/${vacId}`;
-      } else if (this.source === "habr") {
-        return `https://career.habr.com/vacancies/${vacId}`;
-      } else throw new Error(`Unknown source: ${this.source}`);
-    }
     getVacMemKey = () => {
       const vacMemKeyPrefix = "vacTrak";
       const keySuffix = this.getSearchKey() || window.location.search;
@@ -139,7 +139,7 @@ Storage key is "${this.getVacMemKey()}"
         `\u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F \u043F\u0435\u0440\u0435\u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0447\u0435\u0440\u0435\u0437 ${(nextDelay / 1e3).toFixed(1)} \u0441\u0435\u043A (jitter ${jitterMs} \u043C\u0441)`
       );
       setTimeout(() => {
-        if (this.getReloadBlockingElements()) {
+        if (this.page.hasReloadBlockingElements()) {
           this.log(`Reload blocking elements found. Not reloading the page`);
           this.scheduleNextReload();
         } else {
@@ -151,7 +151,7 @@ Storage key is "${this.getVacMemKey()}"
     /** Получить новые вакансии, которых нет в localStorage */
     getUnsavedVacIds() {
       const vacMem = this.getVacMem();
-      const vacIdsOnPage = this.getVacIdsOnPage();
+      const vacIdsOnPage = this.page.getVacIds();
       const newVacs = vacIdsOnPage.filter((id) => !vacMem[id]);
       return newVacs;
     }
@@ -171,18 +171,18 @@ Storage key is "${this.getVacMemKey()}"
         if (newVacs.length) {
           newVacs.forEach((vacId, index) => {
             vacMem[vacId] = (/* @__PURE__ */ new Date()).toISOString();
-            const vacEl = this.getVacEl(vacId);
+            const vacEl = this.page.getVacEl(vacId);
             if (vacEl) {
               if (index === 0) {
                 vacEl.scrollIntoView();
               }
               vacEl.style.backgroundColor = this.colors.fresh;
-              const vacNameEl = this.getVacNameEl(vacEl);
-              const vacCompanyEl = this.getCompanyEl(vacEl);
+              const vacNameEl = this.page.getVacNameEl(vacEl);
+              const vacCompanyEl = this.page.getCompanyEl(vacEl);
               newVacDetails.push({
                 id_ext: vacId,
-                title: vacNameEl?.textContent.trim() || "<notitle>",
-                company: vacCompanyEl?.textContent.trim() || "<nocompany>",
+                title: vacNameEl?.textContent?.trim() || "<notitle>",
+                company: vacCompanyEl?.textContent?.trim() || "<nocompany>",
                 filter_json: this.getUrlParamsObj(),
                 source: this.source,
                 search_key: this.getSearchKey()
@@ -202,7 +202,7 @@ Storage key is "${this.getVacMemKey()}"
             newVacIds.forEach((vacId, index) => {
               setTimeout(
                 () => {
-                  GM_openInTab(this.getVacUrl(vacId), {
+                  GM_openInTab(this.page.getVacUrl(vacId), {
                     active: index === 0,
                     insert: true
                   });
@@ -240,7 +240,6 @@ Storage key is "${this.getVacMemKey()}"
     /** Удаляет из localStorage неподходящие вакансии */
     cleanOutdatedVacs() {
       const vacMem = this.getVacMem();
-      const vacIdsOnPage = this.getVacIdsOnPage();
       for (const vacId in vacMem) {
         if (this.isNotSuitable(vacId)) {
           delete vacMem[vacId];
@@ -250,8 +249,8 @@ Storage key is "${this.getVacMemKey()}"
     }
     isNotSuitable(vacId) {
       const vacMem = this.getVacMem();
-      const vacEl = document.getElementById(vacId);
-      return isOld(vacMem[vacId]) || vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]') || vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_discard"]');
+      const vacEl = this.page.getVacEl(vacId);
+      return isOld(vacMem[vacId]) || this.page.hasUnsuitableMarkers(vacEl);
       function isOld(ds1, maxDays = 30) {
         const msInDay = 1e3 * 60 * 60 * 24;
         const diffInDays = Math.abs(Date.now() - new Date(ds1).getTime()) / msInDay;
