@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      2.1.2
+// @version      2.1.3
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -18,11 +18,70 @@
 
 import { repoUrl } from './_shared.js';
 
+const sourceAdapters: Record<Source, SourceAdapter> = {
+	hh: {
+		getVacIds() {
+			const vacEls = document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`);
+			return Array.from(vacEls)
+				.map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id)
+				.filter((id): id is string => typeof id === 'string');
+		},
+		getVacEl(vacId) {
+			return document.getElementById(vacId);
+		},
+		getVacNameEl(vacEl) {
+			return vacEl.querySelector(`[data-qa='serp-item__title-text']`);
+		},
+		getCompanyEl(vacEl) {
+			return vacEl.querySelector(`[data-qa='vacancy-serp__vacancy-employer-text']`);
+		},
+		hasReloadBlockingElements() {
+			return !!document.querySelector(`.chatik-integration_visible`);
+		},
+		getVacUrl(vacId) {
+			return `https://hh.ru/vacancy/${vacId}`;
+		},
+		hasUnsuitableMarkers(vacEl) {
+			return !!(
+				vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]') ||
+				vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_discard"]')
+			);
+		},
+	},
+	habr: {
+		getVacIds() {
+			const vacEls = document.querySelectorAll(`[data-vacancy-card]`);
+			return Array.from(vacEls)
+				.map((el) => el.getAttribute('data-vacancy-id'))
+				.filter((id): id is string => typeof id === 'string');
+		},
+		getVacEl(vacId) {
+			return document.querySelector(`[data-vacancy-card][data-vacancy-id="${vacId}"]`);
+		},
+		getVacNameEl(vacEl) {
+			return vacEl.querySelector(`.vacancy-card__title-link`);
+		},
+		getCompanyEl(vacEl) {
+			return vacEl.querySelector(`.vacancy-card__company .link-comp`);
+		},
+		hasReloadBlockingElements() {
+			return false;
+		},
+		getVacUrl(vacId) {
+			return `https://career.habr.com/vacancies/${vacId}`;
+		},
+		hasUnsuitableMarkers() {
+			return false;
+		},
+	},
+};
+
 class VacTrak {
 	private vacTrakIntervalMins = 2;
 	private jitterSeconds = 30; // ±30 секунд fuzzing
 	private vacTrakUrl = '';
 	private source: Source = window.location.hostname.includes('.habr.') ? 'habr' : 'hh';
+	private page: SourceAdapter = sourceAdapters[this.source];
 
 	constructor() {
 		const urlParams = this.getUrlParamsObj();
@@ -69,67 +128,6 @@ Storage key is "${this.getVacMemKey()}"
 		this.scheduleNextReload();
 	}
 
-	/** [SRC-DEP] Получить все id вакансий на текущей странице	 */
-	private getVacIdsOnPage(): string[] {
-		if (this.source === 'hh') {
-			const vacEls = document.querySelectorAll(`[data-qa='vacancy-serp__vacancy']`);
-			return Array.from(vacEls)
-				.map((el) => el.querySelector(`[class^="vacancy-card--"]`)?.id)
-				.filter((id) => typeof id === 'string');
-		} else if (this.source === 'habr') {
-			const vacEls = document.querySelectorAll(`[data-vacancy-card]`);
-			return Array.from(vacEls)
-				.map((el) => el.getAttribute('data-vacancy-id'))
-				.filter((id) => typeof id === 'string');
-		} else throw new Error(`Unknown source: ${this.source}`);
-	}
-
-	/** [SRC-DEP] Получить элемент компании в списке */
-	private getVacEl(vacId: string): HTMLElement | null {
-		if (this.source === 'hh') {
-			return document.getElementById(vacId);
-		} else if (this.source === 'habr') {
-			return document.querySelector(`[data-vacancy-card][data-vacancy-id="${vacId}"]`);
-		} else throw new Error(`Unknown source: ${this.source}`);
-	}
-
-	/** [SRC-DEP] Получить название вакансии	 */
-	private getVacNameEl(vacEl: HTMLElement) {
-		if (this.source === 'hh') {
-			return vacEl.querySelector(`[data-qa='serp-item__title-text']`);
-		} else if (this.source === 'habr') {
-			return vacEl.querySelector(`.vacancy-card__title-link`);
-		} else throw new Error(`Unknown source: ${this.source}`);
-	}
-
-	/** [SRC-DEP] Получить название компании	 */
-	private getCompanyEl(vacEl: HTMLElement) {
-		if (this.source === 'hh') {
-			return vacEl.querySelector(`[data-qa='vacancy-serp__vacancy-employer-text']`);
-		} else if (this.source === 'habr') {
-			return vacEl.querySelector(`.vacancy-card__company .link-comp`);
-		} else throw new Error(`Unknown source: ${this.source}`);
-	}
-
-	/** [SRC-DEP] Есть ли элемент, который блокирует перезагрузку страницы	 */
-	private getReloadBlockingElements(): boolean {
-		if (this.source === 'hh') {
-			const el = document.querySelector(`.chatik-integration_visible`);
-			return !!el;
-		} else if (this.source === 'habr') {
-			return false;
-		} else throw new Error(`Unknown source: ${this.source}`);
-	}
-
-	/** [SRC-DEP] Получить url вакансии	 */
-	private getVacUrl(vacId: string) {
-		if (this.source === 'hh') {
-			return `https://hh.ru/vacancy/${vacId}`;
-		} else if (this.source === 'habr') {
-			return `https://career.habr.com/vacancies/${vacId}`;
-		} else throw new Error(`Unknown source: ${this.source}`);
-	}
-
 	private getVacMemKey = (): string => {
 		const vacMemKeyPrefix = 'vacTrak';
 		const keySuffix = this.getSearchKey() || window.location.search;
@@ -164,7 +162,7 @@ Storage key is "${this.getVacMemKey()}"
 		);
 
 		setTimeout(() => {
-			if (this.getReloadBlockingElements()) {
+			if (this.page.hasReloadBlockingElements()) {
 				this.log(`Reload blocking elements found. Not reloading the page`);
 				this.scheduleNextReload(); // продолжаем таймер
 			}
@@ -182,7 +180,7 @@ Storage key is "${this.getVacMemKey()}"
 	/** Получить новые вакансии, которых нет в localStorage */
 	private getUnsavedVacIds(): string[] {
 		const vacMem = this.getVacMem();
-		const vacIdsOnPage = this.getVacIdsOnPage();
+		const vacIdsOnPage = this.page.getVacIds();
 		const newVacs = vacIdsOnPage.filter((id) => !vacMem[id]);
 		return newVacs;
 	}
@@ -207,18 +205,18 @@ Storage key is "${this.getVacMemKey()}"
 			if (newVacs.length) {
 				newVacs.forEach((vacId, index) => {
 					vacMem[vacId] = new Date().toISOString() as IsoDateTimeString;
-					const vacEl = this.getVacEl(vacId);
+					const vacEl = this.page.getVacEl(vacId);
 					if (vacEl) {
 						if (index === 0) {
 							vacEl.scrollIntoView();
 						}
 						vacEl.style.backgroundColor = this.colors.fresh;
-						const vacNameEl = this.getVacNameEl(vacEl);
-						const vacCompanyEl = this.getCompanyEl(vacEl);
+						const vacNameEl = this.page.getVacNameEl(vacEl);
+						const vacCompanyEl = this.page.getCompanyEl(vacEl);
 						newVacDetails.push({
 							id_ext: vacId,
-							title: vacNameEl?.textContent.trim() || '<notitle>',
-							company: vacCompanyEl?.textContent.trim() || '<nocompany>',
+							title: vacNameEl?.textContent?.trim() || '<notitle>',
+							company: vacCompanyEl?.textContent?.trim() || '<nocompany>',
 							filter_json: this.getUrlParamsObj(),
 							source: this.source,
 							search_key: this.getSearchKey(),
@@ -248,7 +246,7 @@ Storage key is "${this.getVacMemKey()}"
 						// открываем с дилеем, чтобы браузер не залупнулся :)
 						setTimeout(
 							() => {
-								GM_openInTab(this.getVacUrl(vacId), {
+								GM_openInTab(this.page.getVacUrl(vacId), {
 									active: index === 0,
 									insert: true,
 								});
@@ -288,7 +286,6 @@ Storage key is "${this.getVacMemKey()}"
 	/** Удаляет из localStorage неподходящие вакансии */
 	private cleanOutdatedVacs() {
 		const vacMem = this.getVacMem();
-		const vacIdsOnPage = this.getVacIdsOnPage();
 		for (const vacId in vacMem) {
 			if (this.isNotSuitable(vacId)) {
 				delete vacMem[vacId];
@@ -300,12 +297,8 @@ Storage key is "${this.getVacMemKey()}"
 
 	private isNotSuitable(vacId: string) {
 		const vacMem = this.getVacMem();
-		const vacEl = document.getElementById(vacId);
-		return (
-			isOld(vacMem[vacId]) ||
-			vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_responded"]') ||
-			vacEl?.querySelector?.('[data-qa="vacancy-serp__vacancy_discard"]')
-		);
+		const vacEl = this.page.getVacEl(vacId);
+		return isOld(vacMem[vacId]) || this.page.hasUnsuitableMarkers(vacEl);
 
 		/** Определяет, что вакансия была запомнена более чем maxDays назад */
 		function isOld(ds1: IsoDateTimeString, maxDays = 30) {
@@ -520,3 +513,21 @@ type CreateVacancyDto = {
 };
 
 type FilterJson = Record<string, string | string[]>;
+
+/** Page-source strategy: all DOM/URL differences live here, VacTrak stays source-agnostic. */
+type SourceAdapter = {
+	/** Get all vacancy ids on the current page */
+	getVacIds(): string[];
+	/** Vacancy card element in the SERP list */
+	getVacEl(vacId: string): HTMLElement | null;
+	/** Vacancy title element inside a card */
+	getVacNameEl(vacEl: HTMLElement): Element | null;
+	/** Company name element inside a card */
+	getCompanyEl(vacEl: HTMLElement): Element | null;
+	/** Whether something on the page should block auto-reload */
+	hasReloadBlockingElements(): boolean;
+	/** Canonical vacancy URL for a given id */
+	getVacUrl(vacId: string): string;
+	/** SERP markers that mean the vacancy is not a "new" candidate (responded, discarded, …) */
+	hasUnsuitableMarkers(vacEl: HTMLElement | null): boolean;
+};

@@ -15,8 +15,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "node build.mjs",
-    "start": "node build.mjs --devbuild",
+    "build": "node build.mjs --devbuild",
+    "build:prod": "node build.mjs",
     "dev": "node build.mjs --watch",
     "format": "npx prettier --write \"src/**/*.{ts,js}\" \"test/**/*.{ts,js}\" \"*.{ts,js}\"",
     "test": "echo \"Error: no test specified\" && exit 1"

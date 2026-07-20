@@ -36,7 +36,7 @@ jobs:
         run: "npm ci --prefer-offline"
 
       - name: Build dist
-        run: "npm run build"
+        run: "npm run build:prod"
 
       - name: Commit and push built files
         run: |
