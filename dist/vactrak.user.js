@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      2.1.3
+// @version      2.1.4
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -112,6 +112,8 @@ Storage key is "${this.getVacMemKey()}"
       if (this.getNewVacs().length) {
         this.processNewVacs();
       }
+      const titlePrefix = this.getSearchKey() || "VacTrak";
+      document.title = `\u3010${titlePrefix}\u3011${document.title}`;
       this.cleanOutdatedVacs();
       this.animateTitleCircle();
       this.scheduleNextReload();
