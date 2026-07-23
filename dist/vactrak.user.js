@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      3.1.0
+// @version      3.1.2
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -78,8 +78,7 @@
     vacTrakIntervalMins = 2;
     jitterSeconds = 30;
     // ±30 секунд fuzzing
-    vacTrakUrl = "https://vactrak-api.onrender.com";
-    // без концевого!
+    vacTrakUrl = "https://vactrak-api.onrender.com/";
     vacTrakToken = "";
     source = window.location.hostname.includes(".habr.") ? "habr" : "hh";
     page = sourceAdapters[this.source];
@@ -90,9 +89,11 @@
         return;
       }
       const { VACTRAK_URL, VACTRAK_INTERVAL, VACTRAK_TOKEN } = window.localStorage;
-      if (VACTRAK_URL && VACTRAK_TOKEN) {
-        this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, "").trim();
+      let backendMsg = "Using only client-side logic (localStorage.VACTRAK_TOKEN not set).";
+      if (VACTRAK_TOKEN) {
+        this.vacTrakUrl = (VACTRAK_URL || this.vacTrakUrl).replace(/\/$/, "").trim();
         this.vacTrakToken = VACTRAK_TOKEN;
+        backendMsg = `New vacancies will be sent to backend: ${this.vacTrakUrl}. `;
       }
       if (VACTRAK_INTERVAL) {
         this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
@@ -102,11 +103,9 @@
 Source is "${this.source}".
 Next check in: ${this.vacTrakIntervalMins} minute(s) \xB1 ${this.jitterSeconds} sec jitter.
 Storage key is "${this.getVacMemKey()}"
+${backendMsg}
 `.trim()
       );
-      if (this.vacTrakUrl) {
-        this.log(`\u26A0\uFE0F Vacancies will be sent to vacTrak URL: ${this.vacTrakUrl}. `);
-      }
       if (document.body.innerHTML.includes(
         "<p><b>502 - Bad Gateway .</b> <ins>That\u2019s an error.</ins></p><p>Looks like we have got an invalid response from the upstream server.  <ins>That\u2019s all we know.</ins></p>"
       )) {
@@ -396,7 +395,7 @@ Storage key is "${this.getVacMemKey()}"
           company: `company ${vacId}`,
           filter_json: this.getUrlParamsObj(),
           source: this.source,
-          search_key: this.getSearchKey()
+          search_key: `_______sendTestVac_______`
         }
       ]);
     }
