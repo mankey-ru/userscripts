@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      3.0.0
+// @version      3.1.0
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -275,26 +275,7 @@ Storage key is "${this.getVacMemKey()}"
 			this.setVacMem(vacMem);
 
 			if (this.vacTrakUrl && this.vacTrakToken) {
-				try {
-					this.fetchInProgress = true;
-					let res = await fetch(`${this.vacTrakUrl}/api/vac`, {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							Accept: 'application/json',
-							Authorization: `Bearer ${this.vacTrakToken}`,
-						},
-						body: JSON.stringify({
-							vacancyList: newVacDetails,
-						}),
-					});
-					let resJson = await res.json();
-					this.log(`Запрос VACTRAK_URL ответил`, resJson);
-				} catch (error) {
-					this.log(`⚠️ Запрос VACTRAK_URL не удался`, error);
-				} finally {
-					this.fetchInProgress = false;
-				}
+				this.sendVacList(newVacDetails);
 			}
 			return true;
 		}
@@ -468,6 +449,43 @@ Storage key is "${this.getVacMemKey()}"
 			currentIndex = (currentIndex + 1) % emojis.length;
 			setFaviconEmoji(emojis[currentIndex]);
 		}, 1000);
+	}
+
+	private async sendVacList(newVacDetails: CreateVacancyDto[]) {
+		try {
+			this.fetchInProgress = true;
+			let res = await fetch(`${this.vacTrakUrl}/api/vac`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json',
+					Authorization: `Bearer ${this.vacTrakToken}`,
+				},
+				body: JSON.stringify({
+					vacancyList: newVacDetails,
+				}),
+			});
+			let resJson = await res.json();
+			this.log(`Запрос VACTRAK_URL ответил`, resJson);
+		} catch (error) {
+			this.log(`⚠️ Запрос VACTRAK_URL не удался`, error);
+		} finally {
+			this.fetchInProgress = false;
+		}
+	}
+
+	sendTestVac() {
+		const vacId = String(Math.floor(Math.random() * 100000));
+		this.sendVacList([
+			{
+				id_ext: vacId,
+				title: `title ${vacId}`,
+				company: `company ${vacId}`,
+				filter_json: this.getUrlParamsObj(),
+				source: this.source,
+				search_key: this.getSearchKey(),
+			},
+		]);
 	}
 }
 
