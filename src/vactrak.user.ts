@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      2.1.4
+// @version      3.0.0
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -77,10 +77,14 @@ const sourceAdapters: Record<CreateVacancyDto['source'], SourceAdapter> = {
 };
 
 class VacTrak {
+	private fetchInProgress = false;
 	private vacTrakIntervalMins = 2;
 	private jitterSeconds = 30; // ±30 секунд fuzzing
-	private vacTrakUrl = '';
-	private source: CreateVacancyDto['source'] = window.location.hostname.includes('.habr.') ? 'habr' : 'hh';
+	private vacTrakUrl = 'https://vactrak-api.onrender.com'; // без концевого!
+	private vacTrakToken = '';
+	private source: CreateVacancyDto['source'] = window.location.hostname.includes('.habr.')
+		? 'habr'
+		: 'hh';
 	private page: SourceAdapter = sourceAdapters[this.source];
 
 	constructor() {
@@ -89,9 +93,10 @@ class VacTrak {
 			this.log('⚠️ VacTrak is disabled. Add `&use_vactrak=yes` to the URL to enable it.');
 			return;
 		}
-		const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
-		if (VACTRAK_URL) {
+		const { VACTRAK_URL, VACTRAK_INTERVAL, VACTRAK_TOKEN } = window.localStorage;
+		if (VACTRAK_URL && VACTRAK_TOKEN) {
 			this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, '').trim(); // удаляем концевой слеш, если есть
+			this.vacTrakToken = VACTRAK_TOKEN;
 		}
 		if (VACTRAK_INTERVAL) {
 			this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
@@ -167,6 +172,12 @@ Storage key is "${this.getVacMemKey()}"
 		setTimeout(() => {
 			if (this.page.hasReloadBlockingElements()) {
 				this.log(`Reload blocking elements found. Not reloading the page`);
+				this.scheduleNextReload(); // продолжаем таймер
+			}
+			if (this.fetchInProgress) {
+				// на случай долго просыпающегося инстанса
+				// лучше дождаться ответа
+				this.log(`Fetch in progress. Not reloading the page`);
 				this.scheduleNextReload(); // продолжаем таймер
 			}
 			// else if (this.getNewVacs().length) {
@@ -263,13 +274,15 @@ Storage key is "${this.getVacMemKey()}"
 			this.animateTitleCircle('⚠️');
 			this.setVacMem(vacMem);
 
-			if (this.vacTrakUrl) {
+			if (this.vacTrakUrl && this.vacTrakToken) {
 				try {
+					this.fetchInProgress = true;
 					let res = await fetch(`${this.vacTrakUrl}/api/vac`, {
 						method: 'POST',
 						headers: {
 							'Content-Type': 'application/json',
 							Accept: 'application/json',
+							Authorization: `Bearer ${this.vacTrakToken}`,
 						},
 						body: JSON.stringify({
 							vacancyList: newVacDetails,
@@ -279,6 +292,8 @@ Storage key is "${this.getVacMemKey()}"
 					this.log(`Запрос VACTRAK_URL ответил`, resJson);
 				} catch (error) {
 					this.log(`⚠️ Запрос VACTRAK_URL не удался`, error);
+				} finally {
+					this.fetchInProgress = false;
 				}
 			}
 			return true;
@@ -507,7 +522,7 @@ type CreateVacancyDto = {
 	/** фильтр вакансий */
 	filter_json: FilterJson;
 	/** источник */
-	source:  'hh' | 'habr';
+	source: 'hh' | 'habr';
 	/** ключ поискового запроса */
 	search_key?: string;
 };
