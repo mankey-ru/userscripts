@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      2.1.4
+// @version      3.0.0
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -74,10 +74,13 @@
     }
   };
   var VacTrak = class {
+    fetchInProgress = false;
     vacTrakIntervalMins = 2;
     jitterSeconds = 30;
     // ±30 секунд fuzzing
-    vacTrakUrl = "";
+    vacTrakUrl = "https://vactrak-api.onrender.com";
+    // без концевого!
+    vacTrakToken = "";
     source = window.location.hostname.includes(".habr.") ? "habr" : "hh";
     page = sourceAdapters[this.source];
     constructor() {
@@ -86,9 +89,10 @@
         this.log("\u26A0\uFE0F VacTrak is disabled. Add `&use_vactrak=yes` to the URL to enable it.");
         return;
       }
-      const { VACTRAK_URL, VACTRAK_INTERVAL } = window.localStorage;
-      if (VACTRAK_URL) {
+      const { VACTRAK_URL, VACTRAK_INTERVAL, VACTRAK_TOKEN } = window.localStorage;
+      if (VACTRAK_URL && VACTRAK_TOKEN) {
         this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, "").trim();
+        this.vacTrakToken = VACTRAK_TOKEN;
       }
       if (VACTRAK_INTERVAL) {
         this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
@@ -143,6 +147,10 @@ Storage key is "${this.getVacMemKey()}"
       setTimeout(() => {
         if (this.page.hasReloadBlockingElements()) {
           this.log(`Reload blocking elements found. Not reloading the page`);
+          this.scheduleNextReload();
+        }
+        if (this.fetchInProgress) {
+          this.log(`Fetch in progress. Not reloading the page`);
           this.scheduleNextReload();
         } else {
           this.log(`Reloading the page`);
@@ -217,13 +225,15 @@ Storage key is "${this.getVacMemKey()}"
         });
         this.animateTitleCircle("\u26A0\uFE0F");
         this.setVacMem(vacMem);
-        if (this.vacTrakUrl) {
+        if (this.vacTrakUrl && this.vacTrakToken) {
           try {
+            this.fetchInProgress = true;
             let res = await fetch(`${this.vacTrakUrl}/api/vac`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Accept: "application/json"
+                Accept: "application/json",
+                Authorization: `Bearer ${this.vacTrakToken}`
               },
               body: JSON.stringify({
                 vacancyList: newVacDetails
@@ -233,6 +243,8 @@ Storage key is "${this.getVacMemKey()}"
             this.log(`\u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043E\u0442\u0432\u0435\u0442\u0438\u043B`, resJson);
           } catch (error) {
             this.log(`\u26A0\uFE0F \u0417\u0430\u043F\u0440\u043E\u0441 VACTRAK_URL \u043D\u0435 \u0443\u0434\u0430\u043B\u0441\u044F`, error);
+          } finally {
+            this.fetchInProgress = false;
           }
         }
         return true;
