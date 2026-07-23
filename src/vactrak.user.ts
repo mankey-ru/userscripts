@@ -3,7 +3,7 @@
 // @description  Reloads the page every N minutes, alerts you if there are new vacancies on the page since the last check via system notification and, if some settings are enabled, sends a notification to backend service with postgres and Telegam notifications
 // @author       mankey-ru
 // @namespace    mankey-ru/vactrak-usercript
-// @version      3.1.0
+// @version      3.1.2
 // @match        https://hh.ru/search/vacancy?*
 // @match        https://hh.uz/search/vacancy?*
 // @match        https://hh1.az/search/vacancy?*
@@ -80,7 +80,7 @@ class VacTrak {
 	private fetchInProgress = false;
 	private vacTrakIntervalMins = 2;
 	private jitterSeconds = 30; // ±30 секунд fuzzing
-	private vacTrakUrl = 'https://vactrak-api.onrender.com'; // без концевого!
+	private vacTrakUrl = 'https://vactrak-api.onrender.com/';
 	private vacTrakToken = '';
 	private source: CreateVacancyDto['source'] = window.location.hostname.includes('.habr.')
 		? 'habr'
@@ -94,9 +94,11 @@ class VacTrak {
 			return;
 		}
 		const { VACTRAK_URL, VACTRAK_INTERVAL, VACTRAK_TOKEN } = window.localStorage;
-		if (VACTRAK_URL && VACTRAK_TOKEN) {
-			this.vacTrakUrl = VACTRAK_URL.replace(/\/$/, '').trim(); // удаляем концевой слеш, если есть
+		let backendMsg = 'Using only client-side logic (localStorage.VACTRAK_TOKEN not set).';
+		if (VACTRAK_TOKEN) {
+			this.vacTrakUrl = (VACTRAK_URL || this.vacTrakUrl).replace(/\/$/, '').trim(); // удаляем концевой слеш, если есть
 			this.vacTrakToken = VACTRAK_TOKEN;
+			backendMsg = `New vacancies will be sent to backend: ${this.vacTrakUrl}. `;
 		}
 		if (VACTRAK_INTERVAL) {
 			this.vacTrakIntervalMins = Math.max(1, VACTRAK_INTERVAL | 0);
@@ -107,11 +109,9 @@ class VacTrak {
 Source is "${this.source}".
 Next check in: ${this.vacTrakIntervalMins} minute(s) ± ${this.jitterSeconds} sec jitter.
 Storage key is "${this.getVacMemKey()}"
+${backendMsg}
 `.trim(),
 		);
-		if (this.vacTrakUrl) {
-			this.log(`⚠️ Vacancies will be sent to vacTrak URL: ${this.vacTrakUrl}. `);
-		}
 
 		if (
 			document.body.innerHTML.includes(
@@ -483,7 +483,7 @@ Storage key is "${this.getVacMemKey()}"
 				company: `company ${vacId}`,
 				filter_json: this.getUrlParamsObj(),
 				source: this.source,
-				search_key: this.getSearchKey(),
+				search_key: `_______sendTestVac_______`,
 			},
 		]);
 	}
