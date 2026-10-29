@@ -74,8 +74,7 @@ function cleanPage(mode = 'EASY') {
 				.join(', ')
 		: ''; // дубли бывают в https://genius.com/Slipknot-gently-original-version-lyrics
 
-	const excludedElements = document.querySelectorAll(`[data-exclude-from-selection=true]`);
-	// @ts-expect-error
+	const excludedElements = document.querySelectorAll<HTMLElement>(`[data-exclude-from-selection=true]`);
 	log(
 		`excludedElements.innerText=`,
 		Array.from(excludedElements)
