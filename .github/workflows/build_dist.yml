@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'src/**'
+      - 'test-utils/**'
       - '.github/workflows/build_dist.yml'
   pull_request:
     paths:
       - 'src/**'
+      - 'test-utils/**'
       - '.github/workflows/build_dist.yml'
   workflow_dispatch:
 
@@ -40,7 +42,10 @@ jobs:
       - name: Type check
         run: "npm run typecheck"
 
-      - name: Unit tests
+      - name: Install Chromium for DOM tests
+        run: "npx playwright install --with-deps chromium"
+
+      - name: Tests
         run: "npm test"
 
       - name: Build dist

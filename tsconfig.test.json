@@ -1,10 +1,11 @@
 {
-  // Unit tests run in Node: node types instead of DOM and Tampermonkey
+  // Tests run in Node with node types. DOM lib is there for the callbacks that DOM tests
+  // pass to page.evaluate(), which run in the browser
   "extends": "./tsconfig.json",
-  "include": ["src/**/*.test.ts"],
+  "include": ["src/**/*.test.ts", "test-utils/**/*.ts"],
   "exclude": ["dist", "node_modules"],
   "compilerOptions": {
     "types": ["node"],
-    "lib": ["ES2022"]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
   }
 }
