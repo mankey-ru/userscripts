@@ -20,7 +20,7 @@ Personal Tampermonkey userscripts (TypeScript, one folder per script in `src/<na
 ## Conventions
 
 - Every script starts with a `// ==UserScript==` header: `@name`, `@description`, `@author`, `@namespace mankey-ru/<name>`, `@version`, `@match`, `@icon`, `@grant`, `@downloadURL` (raw URL of its `dist` file). Bump `@version` when behaviour changes.
-- A new script is `src/<name>/<name>.user.ts`; testable pure helpers go to `src/<name>/lib.ts` with `lib.test.ts` next to it, test data to `src/<name>/fixtures/`. Add its section to `README.md` (name, sites, Install link, Source link) in the same PR.
+- A new script is `src/<name>/<name>.user.ts`; testable pure helpers go to `src/<name>/lib.ts`, their tests to `src/<name>/__tests__/lib.test.ts` (keep the `.test.ts` suffix), test data to `src/<name>/__tests__/fixtures/`. Add its section to `README.md` (name, sites, Install link, Source link) in the same PR.
 - Shared code goes to `src/_shared/index.ts`; it is bundled into each script, not loaded at runtime.
 - Keep files with LF line endings (the git index uses LF).
 
