@@ -14,6 +14,46 @@
 
 "use strict";
 (() => {
+  // src/lyrics-clean-print.lib.ts
+  var colThreshold1 = 20;
+  var colThreshold2 = 50;
+  function cleanTranslation(str) {
+    const cyrillicWithEnglishParensRegex = /^([А-Яа-яеЁ\s]+)\s+\([A-Za-z\s]+\)$/;
+    const match = str.match(cyrillicWithEnglishParensRegex);
+    return match ? match[1].trim() : str;
+  }
+  function cleanLyricsHTML(lyricsHTML) {
+    let cleanedLyricsHTML = lyricsHTML;
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<a[^>]*>(.*?)<\/a>/gis, "$1");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<span[^>]*>(.*?)<\/span>/gis, "$1");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<i[^>]*>(.*?)<\/i>/gis, "$1");
+    cleanedLyricsHTML = cleanedLyricsHTML.split(/<br\s*\/?>\s*<br\s*\/?>/gi).map((part) => `<p class="lyr-par">${part.trim()}</p>`).join("");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, "");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, "");
+    cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, "");
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(
+      /\[(.*?)\]<br\s*\/?>/gis,
+      '<span class="lyr-subdiv">$1</span>'
+    );
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, " ");
+    return cleanedLyricsHTML;
+  }
+  function countLines(lyricsHTML) {
+    return lyricsHTML.split("<br>").length;
+  }
+  function pickColumnCount(lineQty) {
+    if (lineQty < colThreshold1) return 1;
+    if (lineQty < colThreshold2) return 2;
+    return 3;
+  }
+  function extractYear(label) {
+    const yearMatch = label?.match(/\b\d{4}\b/);
+    return yearMatch ? yearMatch[0] : "";
+  }
+  function formatFeatArtists(names, songArtist) {
+    return names.map((name) => cleanTranslation(name.trim())).filter((name) => name !== songArtist).join(", ");
+  }
+
   // src/lyrics-clean-print.user.ts
   var projName = "LCP";
   var logFlag = 1;
@@ -42,36 +82,32 @@
     const artistFeatElAll = document.querySelector(`[class^="SongHeader-desktop__TwoColumnArtistContainer"]`)?.querySelectorAll?.('[class^="PortalTooltip__Container"]');
     const artistFeatElFiltered = artistFeatElAll ? [...artistFeatElAll]?.filter?.((el) => el.textContent?.trim()) : null;
     const yearEl = document.querySelector('[class^="MetadataStats__Container"]')?.querySelector?.('[class^="LabelWithIcon__Label"]');
-    const artistFeatList = artistFeatElFiltered?.length ? artistFeatElFiltered.map((el) => cleanTranslation(el.textContent.trim())).filter((artistFeatName) => artistFeatName !== songArtist).join(", ") : "";
-    const excludedElements = document.querySelectorAll(`[data-exclude-from-selection=true]`);
+    const artistFeatList = artistFeatElFiltered?.length ? formatFeatArtists(
+      artistFeatElFiltered.map((el) => el.textContent),
+      songArtist
+    ) : "";
+    const excludedElements = document.querySelectorAll(
+      `[data-exclude-from-selection=true]`
+    );
     log(
       `excludedElements.innerText=`,
       Array.from(excludedElements).map((el) => el.innerText.trim()).join(" | ")
     );
     excludedElements.forEach((el) => el.remove());
-    const yearMatch = yearEl?.textContent?.match?.(/\b\d{4}\b/);
-    const songYear = yearMatch ? `${yearMatch[0]}` : "";
-    const cleanedLyricsHTML = Array.from(lyricsEls).map((el) => getCleanedLyricsHTML(el)).join(`<!-- ${projName}: \u0437\u0434\u0435\u0441\u044C \u0440\u0430\u0437\u0440\u044B\u0432 -->`);
+    const songYear = extractYear(yearEl?.textContent);
+    const cleanedLyricsHTML = Array.from(lyricsEls).map((el) => cleanLyricsHTML(el.innerHTML)).join(`<!-- ${projName}: \u0437\u0434\u0435\u0441\u044C \u0440\u0430\u0437\u0440\u044B\u0432 -->`);
     document.body.innerHTML = "";
-    const lineQty = cleanedLyricsHTML.split("<br>").length;
-    const threshold1 = 20;
-    const threshold2 = 50;
-    if (lineQty < threshold1) {
-      colCount = 1;
-    } else if (lineQty < threshold2) {
-      colCount = 2;
-    } else {
-      colCount = 3;
-    }
+    const lineQty = countLines(cleanedLyricsHTML);
+    colCount = pickColumnCount(lineQty);
     console.log(
       `lineQty=`,
       lineQty,
       `colCount=`,
       colCount,
       `threshold1=`,
-      threshold1,
+      colThreshold1,
       `threshold2=`,
-      threshold2
+      colThreshold2
     );
     const container = document.createElement("div");
     container.id = "clean-print-container";
@@ -183,22 +219,6 @@
         `;
     document.head.appendChild(style);
   }
-  function getCleanedLyricsHTML(lyricsEl) {
-    let cleanedLyricsHTML = lyricsEl.innerHTML;
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<a[^>]*>(.*?)<\/a>/gis, "$1");
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<span[^>]*>(.*?)<\/span>/gis, "$1");
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(/<i[^>]*>(.*?)<\/i>/gis, "$1");
-    cleanedLyricsHTML = cleanedLyricsHTML.split(/<br\s*\/?>\s*<br\s*\/?>/gi).map((part) => `<p class="lyr-par">${part.trim()}</p>`).join("");
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, "");
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, "");
-    cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, "");
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(
-      /\[(.*?)\]<br\s*\/?>/gis,
-      '<span class="lyr-subdiv">$1</span>'
-    );
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, " ");
-    return cleanedLyricsHTML;
-  }
   function createButton(text = "\u0442\u0435\u043A\u0441\u0442 \u043D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D", onClick = () => alert("onClick \u043D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D")) {
     const button = document.createElement("button");
     button.textContent = text;
@@ -220,10 +240,5 @@
   }
   function log(...args) {
     if (logFlag) console.log(`[${projName}]`, ...args);
-  }
-  function cleanTranslation(str) {
-    const cyrillicWithEnglishParensRegex = /^([А-Яа-яеЁ\s]+)\s+\([A-Za-z\s]+\)$/;
-    const match = str.match(cyrillicWithEnglishParensRegex);
-    return match ? match[1].trim() : str;
   }
 })();
