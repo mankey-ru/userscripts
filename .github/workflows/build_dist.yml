@@ -3,11 +3,11 @@ name: Compile dist/*.ts
 on:
   push:
     paths:
-      - 'scripts/**'
+      - 'src/**'
       - '.github/workflows/build_dist.yml'
   pull_request:
     paths:
-      - 'scripts/**'
+      - 'src/**'
       - '.github/workflows/build_dist.yml'
   workflow_dispatch:
 

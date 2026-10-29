@@ -3,17 +3,17 @@ import { build } from 'esbuild';
 import { readdirSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 
-const scriptsDir = 'scripts';
+const srcDir = 'src';
 const dev = process.argv.includes('--devbuild');
 const distDir = dev ? 'dist-dev' : 'dist';
 
 // Создаём dist, если нет
 mkdirSync(distDir, { recursive: true });
 
-// Entry points: scripts/<name>/<name>.user.ts -> dist/<name>.user.js (flat, @downloadURL relies on it)
-const files = readdirSync(scriptsDir, { withFileTypes: true })
+// Entry points: src/<name>/<name>.user.ts -> dist/<name>.user.js (flat, @downloadURL relies on it)
+const files = readdirSync(srcDir, { withFileTypes: true })
 	.filter((d) => d.isDirectory())
-	.map((d) => join(scriptsDir, d.name, `${d.name}.user.ts`))
+	.map((d) => join(srcDir, d.name, `${d.name}.user.ts`))
 	.filter((f) => existsSync(f));
 
 console.log(`Building ${files.length} userscripts...`);
