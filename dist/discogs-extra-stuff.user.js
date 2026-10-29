@@ -16,10 +16,9 @@
   // src/discogs-extra-stuff.user.ts
   var projName = "DES";
   var logFlag = 1;
+  var LINK_STYLE = "background: purple; display: inline-block; padding: 5px; color: #fff; text-decoration:none; border-radius: 5px; white-space: nowrap; cursor: pointer;";
   window.setTimeout(init, 1e3);
   function init() {
-    const linkStyle = "background: purple; display: inline-block; padding: 5px; color: #fff; text-decoration:none; border-radius: 5px; white-space: nowrap; cursor: pointer;";
-    const vkHrefsList = [];
     const titleEl = document.querySelector("h1");
     const trackListEl = document.querySelector("[class^=tracklist]");
     const trackTitleTds = document.querySelectorAll("td[class^=trackTitle]");
@@ -31,74 +30,79 @@
       });
       return;
     }
-    const titleTextParts = titleEl.textContent.split("\u2013");
-    const releaseArtist = titleTextParts[0].trim();
-    const releaseTitle = titleTextParts[1].trim();
+    const { artist: releaseArtist, title: releaseTitle } = parseReleaseHeading(titleEl.textContent);
     const isVarious = releaseArtist === "Various";
     log({ isVarious, releaseArtist, releaseTitle });
-    trackTitleTds.forEach(function(trackTitleSpan, i) {
-      const trackRow = trackTitleSpan.closest("tr");
+    const vkHrefs = [];
+    trackTitleTds.forEach((trackTitleTd, i) => {
+      const trackRow = trackTitleTd.closest("tr");
       if (!trackRow) return;
-      const trackRowArtistElement = trackRow.querySelector("[class^=artist_]");
-      const trackRowArtist = trackRowArtistElement ? trackRowArtistElement.textContent.trim().replace("\u2013", "").replace(/\(\d+\)$/g, "") : "";
-      const trackArtist = isVarious ? trackRowArtist : releaseArtist;
-      const trackTitle = trackTitleSpan.textContent.trim();
+      const trackArtist = isVarious ? getTrackRowArtist(trackRow) : releaseArtist;
+      const trackTitle = trackTitleTd.textContent.trim();
       log(`${i} ${trackArtist} - ${trackTitle}`);
       const q = encodeURIComponent(trackArtist + " \u2014 " + trackTitle);
       const vkHref = `https://vk.com/audios1239592?q=${q}`;
-      addLink(vkHref, `Vk Music`);
-      vkHrefsList.push(vkHref);
-      addLink(
-        `https://www.google.com/search?num=20&newwindow=1&source=lnms&tbm=vid&q=${q}`,
-        `Google`
+      vkHrefs.push(vkHref);
+      appendCell(trackRow, createLink("Vk Music", vkHref));
+      appendCell(
+        trackRow,
+        createLink(
+          "Google",
+          `https://www.google.com/search?num=20&newwindow=1&source=lnms&tbm=vid&q=${q}`
+        )
       );
-      function addLink(href, text) {
-        const link = document.createElement("a");
-        link.target = "_blank";
-        link.style.cssText = linkStyle;
-        link.href = href;
-        link.textContent = text;
-        const td = document.createElement("td");
-        td.appendChild(link);
-        if (!trackRow) return;
-        trackRow.appendChild(td);
-      }
     });
     const releaseBtnBar = document.createElement("div");
     releaseBtnBar.style.textAlign = "right";
     trackListEl.prepend(releaseBtnBar);
-    createAllTracksVkLink(releaseBtnBar);
-    createRutrackerLink(releaseBtnBar);
-    function createAllTracksVkLink(containerElement) {
-      const vkAllTracksLink = document.createElement("a");
-      vkAllTracksLink.style.cssText = linkStyle;
-      vkAllTracksLink.textContent = "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0432\u0441\u0435 \u0442\u0440\u0435\u043A\u0438 VK";
-      vkAllTracksLink.addEventListener("click", function() {
-        if (confirm(`\u041E\u0442\u043A\u0440\u044B\u0442\u044C ${vkHrefsList.length} \u0432\u043A\u043B\u0430\u0434\u043E\u043A VK?`)) {
-          const _links = vkHrefsList.slice();
-          const interval = setInterval(function() {
-            const url = _links.shift();
-            window.open(url, "_blank");
-            if (_links.length === 0) {
-              clearInterval(interval);
-            }
-          }, 30);
-        }
-      });
-      containerElement.appendChild(vkAllTracksLink);
+    releaseBtnBar.append(
+      createOpenAllLink(vkHrefs),
+      createLink(
+        "\u041D\u0430\u0439\u0442\u0438 \u0440\u0435\u043B\u0438\u0437 \u043D\u0430 Rutracker",
+        rutrackerSearchUrl(`${isVarious ? "VA" : releaseArtist} - ${releaseTitle}`)
+      )
+    );
+  }
+  function parseReleaseHeading(heading) {
+    const [artist, title] = heading.split("\u2013");
+    return { artist: artist.trim(), title: title.trim() };
+  }
+  function getTrackRowArtist(trackRow) {
+    const artistEl = trackRow.querySelector("[class^=artist_]");
+    if (!artistEl) return "";
+    return artistEl.textContent.trim().replace("\u2013", "").replace(/\(\d+\)$/g, "");
+  }
+  function rutrackerSearchUrl(query) {
+    return `https://rutracker.org/forum/tracker.php?nm=${encodeURIComponent(query)}&f[]=-1&o=10&s=2&pn=`;
+  }
+  function createLink(text, href) {
+    const link = document.createElement("a");
+    link.style.cssText = LINK_STYLE;
+    link.textContent = text;
+    if (href) {
+      link.href = href;
+      link.target = "_blank";
     }
-    function createRutrackerLink(containerElement) {
-      const vkAllTracksLink = document.createElement("a");
-      vkAllTracksLink.style.cssText = linkStyle;
-      vkAllTracksLink.textContent = "\u041D\u0430\u0439\u0442\u0438 \u0440\u0435\u043B\u0438\u0437 \u043D\u0430 Rutracker";
-      const query = `${isVarious ? "VA" : releaseArtist} - ${releaseTitle}`;
-      vkAllTracksLink.setAttribute(
-        "href",
-        `https://rutracker.org/forum/tracker.php?nm=${encodeURIComponent(query)}&f[]=-1&o=10&s=2&pn=`
-      );
-      vkAllTracksLink.setAttribute("target", `_blank`);
-      containerElement.appendChild(vkAllTracksLink);
-    }
+    return link;
+  }
+  function appendCell(row, content) {
+    const td = document.createElement("td");
+    td.appendChild(content);
+    row.appendChild(td);
+  }
+  function createOpenAllLink(hrefs) {
+    const link = createLink("\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0432\u0441\u0435 \u0442\u0440\u0435\u043A\u0438 VK");
+    link.addEventListener("click", () => {
+      if (confirm(`\u041E\u0442\u043A\u0440\u044B\u0442\u044C ${hrefs.length} \u0432\u043A\u043B\u0430\u0434\u043E\u043A VK?`)) openOneByOne(hrefs);
+    });
+    return link;
+  }
+  function openOneByOne(urls, delayMs = 30) {
+    const queue = urls.slice();
+    const interval = window.setInterval(() => {
+      window.open(queue.shift(), "_blank");
+      if (queue.length === 0) window.clearInterval(interval);
+    }, delayMs);
   }
   function log(...args) {
     if (logFlag) console.log(`[${projName}]`, ...args);
