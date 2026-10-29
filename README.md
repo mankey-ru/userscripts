@@ -10,18 +10,6 @@ Personal [Tampermonkey](https://www.tampermonkey.net/)-style userscripts by [man
 
 ## Scripts
 
-### [VACTRAK] Vacancy Tracker
-
-On job search result pages, reloads on an interval, detects new vacancies since the last check, and alerts via system notification (optional backend / Telegram integration when configured).
-
-Works best with server counterpart: [`vactrak-service`](https://github.com/mankey-ru/vactrak-service).
-
-| | |
-| --- | --- |
-| **Sites** | `hh.ru`, `hh.uz`, `hh1.az`, `rabota.by`, `career.habr.com` vacancy search |
-| **Install** | [vactrak.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/vactrak.user.js) |
-| **Source** | [`src/vactrak.user.ts`](src/vactrak.user.ts) |
-
 ### [DES] Discogs Extra Stuff
 
 Adds extra search links on [Discogs](https://www.discogs.com/) release/tracklist pages (e.g. VK Music, Google video search) for each track.
