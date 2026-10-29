@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ==UserScript==
 // @name         [Lepro] Lepro Total Comments JS
 // @description  Для Лепрозория. Взат здесь: https://github.com/lynxtaa/Lepro-Total-Comments и чутка допилен
@@ -15,93 +14,96 @@
 // @downloadURL  https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/lepro-total-comments.user.js
 // ==/UserScript==
 
-var BEST_TRESHOLD = 0.75, // Порог рейтинга, можно поиграться со значением
-	hideComments = parseComments;
+/** Rating threshold in standard deviations, tweak to taste */
+const BEST_THRESHOLD = 0.75;
 
-var all = document.createElement('a'),
-	best = document.createElement('a'),
-	controls = document.getElementById('js-comments').querySelector('.b-comments_controls'),
-	holder = document.getElementById('js-comments_holder'),
-	style = document.createElement('style');
+init();
 
-style.textContent = '.is_hidden { display: none; }';
-document.body.appendChild(style);
+function init() {
+	const controls = document.getElementById('js-comments')?.querySelector('.b-comments_controls');
+	const holder = document.getElementById('js-comments_holder');
+	const sortLink = controls?.querySelector('a[data-key="sort"]');
 
-controls.querySelector('a[data-key="sort"]').className = '';
-
-// Кнопки управления
-best.textContent = 'лучшие';
-all.textContent = 'все';
-controls.appendChild(best);
-controls.appendChild(all);
-
-// Лучшие
-best.addEventListener(
-	'click',
-	function (e) {
-		e.preventDefault();
-
-		if (this.className == 'active') return false;
-
-		this.className = 'active';
-		this.nextSibling.className = '';
-
-		hideComments();
-	},
-	false,
-);
-
-// Показать всё
-all.addEventListener(
-	'click',
-	function (e) {
-		e.preventDefault();
-
-		if (hideComments == parseComments) return false;
-
-		this.className = 'active';
-		this.previousSibling.className = '';
-
-		document.body.removeChild(style);
-	},
-	false,
-);
-
-function parseComments() {
-	var votes = [].slice.call(holder.querySelectorAll('strong.vote_result'));
-	var abovenull = 0,
-		rating_square_sum = 0,
-		rating_sum = 0,
-		shown = votes.length;
-
-	var ratings = votes.map(function (el) {
-		var rating = +el.textContent;
-
-		if (rating > 0) {
-			abovenull++;
-			rating_sum += rating;
-			rating_square_sum += Math.pow(rating, 2);
-		}
-
-		return { el, rating };
-	});
-
-	if (!abovenull) return null;
-
-	var std_dev = Math.sqrt(rating_square_sum / abovenull - Math.pow(rating_sum / abovenull, 2));
-
-	hideComments = function () {
-		document.body.appendChild(style);
-	};
-
-	for (var i = ratings.length; i--;) {
-		if (ratings[i].rating / std_dev >= BEST_TRESHOLD) continue;
-
-		var comment = ratings[i].el.parentNode.parentNode.parentNode.parentNode;
-		if (!comment.classList.contains('comment')) throw Error("Can't find comment.");
-		comment.classList.add('is_hidden');
-		shown--;
+	if (!controls || !holder || !sortLink) {
+		console.error('Lepro Total Comments: required elements not found', {
+			controls,
+			holder,
+			sortLink,
+		});
+		return;
 	}
 
-	best.setAttribute('title', shown);
+	// Hides the filtered-out comments while attached: "best" mode attaches it, "all" mode detaches it
+	const style = document.createElement('style');
+	style.textContent = '.is_hidden { display: none; }';
+	document.body.appendChild(style);
+
+	sortLink.className = '';
+
+	const best = document.createElement('a');
+	const all = document.createElement('a');
+	best.textContent = 'лучшие';
+	all.textContent = 'все';
+	controls.append(best, all);
+
+	let isFiltered = false;
+
+	best.addEventListener('click', (e) => {
+		e.preventDefault();
+		if (best.className === 'active') return;
+
+		best.className = 'active';
+		all.className = '';
+
+		if (isFiltered) {
+			document.body.appendChild(style);
+			return;
+		}
+
+		const votes = Array.from(holder.querySelectorAll('strong.vote_result'));
+		const ratings = votes.map((el) => +el.textContent);
+		const stdDev = positiveStdDev(ratings);
+		if (stdDev === null) return;
+
+		isFiltered = true;
+		let shown = votes.length;
+		votes.forEach((vote, i) => {
+			if (ratings[i] / stdDev >= BEST_THRESHOLD) return;
+			getVoteComment(vote).classList.add('is_hidden');
+			shown--;
+		});
+		best.title = String(shown);
+	});
+
+	all.addEventListener('click', (e) => {
+		e.preventDefault();
+		if (!isFiltered) return;
+
+		all.className = 'active';
+		best.className = '';
+
+		style.remove();
+	});
+}
+
+/** Population standard deviation of the positive ratings, null when there are none */
+function positiveStdDev(ratings: number[]): number | null {
+	const positive = ratings.filter((rating) => rating > 0);
+	if (!positive.length) return null;
+
+	let sum = 0;
+	let squareSum = 0;
+	for (const rating of positive) {
+		sum += rating;
+		squareSum += Math.pow(rating, 2);
+	}
+	return Math.sqrt(squareSum / positive.length - Math.pow(sum / positive.length, 2));
+}
+
+/** The vote counter sits four levels below its comment element */
+function getVoteComment(vote: Element): Element {
+	let comment: Element | null = vote;
+	for (let i = 0; i < 4 && comment; i++) comment = comment.parentElement;
+	if (!comment?.classList.contains('comment')) throw Error("Can't find comment.");
+	return comment;
 }
