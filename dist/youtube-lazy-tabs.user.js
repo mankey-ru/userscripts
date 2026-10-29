@@ -17,7 +17,7 @@
 
 "use strict";
 (() => {
-  // scripts/youtube-lazy-tabs/youtube-lazy-tabs.user.ts
+  // src/youtube-lazy-tabs/youtube-lazy-tabs.user.ts
   var projName = "YLT";
   var logFlag = 1;
   var LOAD_DELAY_MS = 300;
