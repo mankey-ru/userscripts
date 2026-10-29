@@ -1,10 +1,10 @@
 # userscripts
 
-Personal [Tampermonkey](https://www.tampermonkey.net/)-style userscripts by [mankey-ru](https://github.com/mankey-ru). Sources live in [`src/`](src/); installable builds are in [`dist/`](dist/).
+Personal [Tampermonkey](https://www.tampermonkey.net/)-style userscripts by [mankey-ru](https://github.com/mankey-ru). Sources live in [`scripts/`](scripts/), one folder per script (entry point, helpers, tests); installable builds are in [`dist/`](dist/).
 
 **Install:** open an **Install** link below (raw `.user.js` from `main`). Your userscript manager should offer to install it. Requires a manager such as Tampermonkey, Violentmonkey, or Greasemonkey.
 
-**Build:** `npm run build` (dev → `dist-dev/`) or `npm run build:prod` (→ `dist/`). See [`package.json`](package.json).
+**Build:** `npm run build` (dev → `dist-dev/`) or `npm run build:prod` (→ `dist/`). Type check: `npm run typecheck`. Tests: `npm test`. See [`package.json`](package.json).
 
 ---
 
@@ -18,7 +18,7 @@ Adds extra search links on [Discogs](https://www.discogs.com/) release/tracklist
 | --- | --- |
 | **Sites** | `discogs.com` |
 | **Install** | [discogs-extra-stuff.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/discogs-extra-stuff.user.js) |
-| **Source** | [`src/discogs-extra-stuff.user.ts`](src/discogs-extra-stuff.user.ts) |
+| **Source** | [`scripts/discogs-extra-stuff/discogs-extra-stuff.user.ts`](scripts/discogs-extra-stuff/discogs-extra-stuff.user.ts) |
 
 ### [YSL] YouTube Search Links
 
@@ -28,7 +28,7 @@ On [YouTube](https://www.youtube.com/) watch pages, adds buttons next to the vid
 | --- | --- |
 | **Sites** | `youtube.com` |
 | **Install** | [youtube-search-links.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/youtube-search-links.user.js) |
-| **Source** | [`src/youtube-search-links.user.ts`](src/youtube-search-links.user.ts) |
+| **Source** | [`scripts/youtube-search-links/youtube-search-links.user.ts`](scripts/youtube-search-links/youtube-search-links.user.ts) |
 
 ### [LCP] Lyrics: Clean Print
 
@@ -38,7 +38,7 @@ On [Genius](https://genius.com/) lyrics pages, adds **Clean: Easy** / **Clean: H
 | --- | --- |
 | **Sites** | `genius.com` |
 | **Install** | [lyrics-clean-print.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/lyrics-clean-print.user.js) |
-| **Source** | [`src/lyrics-clean-print.user.ts`](src/lyrics-clean-print.user.ts) |
+| **Source** | [`scripts/lyrics-clean-print/lyrics-clean-print.user.ts`](scripts/lyrics-clean-print/lyrics-clean-print.user.ts) |
 
 ### [RMD] Ring My Droid
 
@@ -48,7 +48,7 @@ On [Google Find Hub / Android Find](https://www.google.com/android/find), if the
 | --- | --- |
 | **Sites** | `google.com/android/find` |
 | **Install** | [ring-my-droid.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/ring-my-droid.user.js) |
-| **Source** | [`src/ring-my-droid.user.ts`](src/ring-my-droid.user.ts) |
+| **Source** | [`scripts/ring-my-droid/ring-my-droid.user.ts`](scripts/ring-my-droid/ring-my-droid.user.ts) |
 
 
 
@@ -60,7 +60,7 @@ For [Лепрозорий](https://leprosorium.ru/) comment pages: UI to show **
 | --- | --- |
 | **Sites** | `leprosorium.ru` comments |
 | **Install** | [lepro-total-comments.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/lepro-total-comments.user.js) |
-| **Source** | [`src/lepro-total-comments.user.ts`](src/lepro-total-comments.user.ts) |
+| **Source** | [`scripts/lepro-total-comments/lepro-total-comments.user.ts`](scripts/lepro-total-comments/lepro-total-comments.user.ts) |
 
 ---
 

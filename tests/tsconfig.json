@@ -1,9 +1,0 @@
-{
-  // Tests run in Node: node types instead of DOM and Tampermonkey
-  "extends": "../tsconfig.json",
-  "include": ["**/*.ts"],
-  "compilerOptions": {
-    "types": ["node"],
-    "lib": ["ES2022"]
-  }
-}

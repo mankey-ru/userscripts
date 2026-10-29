@@ -1,16 +1,20 @@
 // @ts-check
 import { build } from 'esbuild';
-import { readdirSync, readFileSync, mkdirSync } from 'fs';
+import { readdirSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { join, basename } from 'path';
 
-const srcDir = 'src';
+const scriptsDir = 'scripts';
 const dev = process.argv.includes('--devbuild');
 const distDir = dev ? 'dist-dev' : 'dist';
 
 // Создаём dist, если нет
 mkdirSync(distDir, { recursive: true });
 
-const files = readdirSync(srcDir).filter((f) => f.endsWith('.user.ts'));
+// Entry points: scripts/<name>/<name>.user.ts -> dist/<name>.user.js (flat, @downloadURL relies on it)
+const files = readdirSync(scriptsDir, { withFileTypes: true })
+	.filter((d) => d.isDirectory())
+	.map((d) => join(scriptsDir, d.name, `${d.name}.user.ts`))
+	.filter((f) => existsSync(f));
 
 console.log(`Building ${files.length} userscripts...`);
 
@@ -23,9 +27,8 @@ function extractUserscriptHeader(code) {
 	return match ? match[0] + '\n\n' : '';
 }
 
-for (const file of files) {
-	const input = join(srcDir, file);
-	const outputName = basename(file, '.ts') + '.js'; // ← .user.js
+for (const input of files) {
+	const outputName = basename(input, '.ts') + '.js'; // ← .user.js
 	const output = join(distDir, outputName);
 
 	const source = readFileSync(input, 'utf8');

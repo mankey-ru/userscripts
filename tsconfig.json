@@ -1,11 +1,12 @@
 {
   "include": [
-    "src/**/*",
+    "scripts/**/*",
     "main.d.ts"
   ],
   "exclude": [
     "dist",
-    "node_modules"
+    "node_modules",
+    "scripts/**/*.test.ts"
   ],
   "compilerOptions": {
     "types": ["tampermonkey"],
