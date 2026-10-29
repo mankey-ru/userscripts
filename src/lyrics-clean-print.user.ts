@@ -11,6 +11,17 @@
 // @run-at       document-end
 // ==/UserScript==
 
+import {
+	cleanLyricsHTML,
+	cleanTranslation,
+	colThreshold1,
+	colThreshold2,
+	countLines,
+	extractYear,
+	formatFeatArtists,
+	pickColumnCount,
+} from './lyrics-clean-print.lib.ts';
+
 const projName = 'LCP';
 
 // @ts-check
@@ -68,13 +79,15 @@ function cleanPage(mode = 'EASY') {
 		.querySelector('[class^="MetadataStats__Container"]')
 		?.querySelector?.('[class^="LabelWithIcon__Label"]');
 	const artistFeatList = artistFeatElFiltered?.length
-		? artistFeatElFiltered
-				.map((el) => cleanTranslation(el.textContent.trim()))
-				.filter((artistFeatName) => artistFeatName !== songArtist)
-				.join(', ')
-		: ''; // дубли бывают в https://genius.com/Slipknot-gently-original-version-lyrics
+		? formatFeatArtists(
+				artistFeatElFiltered.map((el) => el.textContent),
+				songArtist,
+			)
+		: '';
 
-	const excludedElements = document.querySelectorAll<HTMLElement>(`[data-exclude-from-selection=true]`);
+	const excludedElements = document.querySelectorAll<HTMLElement>(
+		`[data-exclude-from-selection=true]`,
+	);
 	log(
 		`excludedElements.innerText=`,
 		Array.from(excludedElements)
@@ -83,11 +96,10 @@ function cleanPage(mode = 'EASY') {
 	);
 	excludedElements.forEach((el) => el.remove());
 
-	const yearMatch = yearEl?.textContent?.match?.(/\b\d{4}\b/);
-	const songYear = yearMatch ? `${yearMatch[0]}` : '';
+	const songYear = extractYear(yearEl?.textContent);
 
 	const cleanedLyricsHTML = Array.from(lyricsEls)
-		.map((el) => getCleanedLyricsHTML(el))
+		.map((el) => cleanLyricsHTML(el.innerHTML))
 		.join(`<!-- ${projName}: здесь разрыв -->`);
 
 	// Clear the body
@@ -95,19 +107,8 @@ function cleanPage(mode = 'EASY') {
 
 	// Create new content with artist name and multi-column lyrics
 
-	const lineQty = cleanedLyricsHTML.split('<br>').length;
-
-	const threshold1 = 20;
-	const threshold2 = 50;
-
-	// чтобы на 1 страницу помещалось
-	if (lineQty < threshold1) {
-		colCount = 1;
-	} else if (lineQty < threshold2) {
-		colCount = 2;
-	} else {
-		colCount = 3;
-	}
+	const lineQty = countLines(cleanedLyricsHTML);
+	colCount = pickColumnCount(lineQty);
 
 	console.log(
 		`lineQty=`,
@@ -115,9 +116,9 @@ function cleanPage(mode = 'EASY') {
 		`colCount=`,
 		colCount,
 		`threshold1=`,
-		threshold1,
+		colThreshold1,
 		`threshold2=`,
-		threshold2,
+		colThreshold2,
 	);
 
 	const container = document.createElement('div');
@@ -237,37 +238,6 @@ function createStyle(mode = 'EASY') {
 	document.head.appendChild(style);
 }
 
-function getCleanedLyricsHTML(lyricsEl: Element): string {
-	let cleanedLyricsHTML = lyricsEl.innerHTML;
-
-	// Заменяем все ссылки на тупо их текст
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/<a[^>]*>(.*?)<\/a>/gis, '$1');
-	// Заменяем все спаны на тупо их текст
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/<span[^>]*>(.*?)<\/span>/gis, '$1');
-	// Заменяем все i на тупо их текст
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/<i[^>]*>(.*?)<\/i>/gis, '$1');
-
-	// Бьём на абзацы
-	cleanedLyricsHTML = cleanedLyricsHTML
-		.split(/<br\s*\/?>\s*<br\s*\/?>/gi)
-		.map((part) => `<p class="lyr-par">${part.trim()}</p>`)
-		.join('');
-
-	// часто есть такая отдельная фраза хз зачем. Если после звездочки сунуть ? то будет non-greedy
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, '');
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, '');
-	cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, '');
-
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(
-		/\[(.*?)\]<br\s*\/?>/gis,
-		'<span class="lyr-subdiv">$1</span>',
-	);
-
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, ' ');
-	//cleanedLyricsHTML = cleanedLyricsHTML.replace(/(<br\s*\/?>\s*)+/gi, '<br>');
-	return cleanedLyricsHTML;
-}
-
 function createButton(text = 'текст не указан', onClick = () => alert('onClick не указан')) {
 	// Create floating button
 	const button = document.createElement('button');
@@ -293,19 +263,3 @@ function createButton(text = 'текст не указан', onClick = () => ale
 function log(...args) {
 	if (logFlag) console.log(`[${projName}]`, ...args);
 }
-
-/**
- * Удаление перевода кототорый джениус суёт русским артистам типа `Игорь Жирнов (Igor Zhirnov)`
- * @param {string} str */
-function cleanTranslation(str: string): string {
-	const cyrillicWithEnglishParensRegex = /^([А-Яа-яеЁ\s]+)\s+\([A-Za-z\s]+\)$/;
-	// If matches, return only the Cyrillic part (group 1); else return original
-	const match = str.match(cyrillicWithEnglishParensRegex);
-	return match ? match[1].trim() : str;
-}
-
-/* console.log(cleanTranslation("Проститутка (Prostitute)"));  // Output: "Проститутка"
-console.log(cleanTranslation("Слово (Word)"));  // Output: "Слово"
-console.log(cleanTranslation("English (Text)"));  // Output: "English (Text)" (no Cyrillic main part)
-console.log(cleanTranslation("Русский (русский)"));  // Output: "Русский (русский)" (Cyrillic in parens, unchanged)
-console.log(cleanTranslation("Normal string"));  // Output: "Normal string" (no parens) */

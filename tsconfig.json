@@ -1,7 +1,6 @@
 {
   "include": [
     "src/**/*",
-    "tests/**/*",
     "main.d.ts"
   ],
   "exclude": [
@@ -21,6 +20,7 @@
     "allowJs": true,
     // Для UserScripts (важно)
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "lib": [
       "ES2022",
