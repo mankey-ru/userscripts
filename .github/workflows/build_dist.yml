@@ -4,9 +4,11 @@ on:
   push:
     paths:
       - 'scripts/**'
+      - '.github/workflows/build_dist.yml'
   pull_request:
     paths:
       - 'scripts/**'
+      - '.github/workflows/build_dist.yml'
   workflow_dispatch:
 
 permissions:
