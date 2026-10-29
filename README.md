@@ -62,6 +62,16 @@ For [Лепрозорий](https://leprosorium.ru/) comment pages: UI to show **
 | **Install** | [lepro-total-comments.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/lepro-total-comments.user.js) |
 | **Source** | [`src/lepro-total-comments/lepro-total-comments.user.ts`](src/lepro-total-comments/lepro-total-comments.user.ts) |
 
+### [FXC] Fixture Capture
+
+Dev tool for this repo's tests. Its menu command **Save fixture** downloads the rendered page as `<site>__<case>.html`: scripts, styles, tokens and comments removed, CSS-hidden elements marked with `hidden`, source URL and capture date in a comment on top. Disable the userscript under test before capturing, so its own buttons don't end up in the fixture.
+
+| | |
+| --- | --- |
+| **Sites** | any (menu command only) |
+| **Install** | [fixture-capture.user.js](https://github.com/mankey-ru/userscripts/raw/refs/heads/main/dist/fixture-capture.user.js) |
+| **Source** | [`src/fixture-capture/fixture-capture.user.ts`](src/fixture-capture/fixture-capture.user.ts) |
+
 ---
 
 ## License
