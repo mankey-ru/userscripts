@@ -13,7 +13,7 @@
 
 "use strict";
 (() => {
-  // src/youtube-search-links.user.ts
+  // scripts/youtube-search-links/youtube-search-links.user.ts
   var projName = "YSL";
   var logFlag = 1;
   var titleElementCheckInterval = setInterval(function() {

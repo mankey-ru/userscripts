@@ -14,7 +14,7 @@
 
 "use strict";
 (() => {
-  // src/lyrics-clean-print.lib.ts
+  // scripts/lyrics-clean-print/lib.ts
   var colThreshold1 = 20;
   var colThreshold2 = 50;
   function cleanTranslation(str) {
@@ -54,7 +54,7 @@
     return names.map((name) => cleanTranslation(name.trim())).filter((name) => name !== songArtist).join(", ");
   }
 
-  // src/lyrics-clean-print.user.ts
+  // scripts/lyrics-clean-print/lyrics-clean-print.user.ts
   var projName = "LCP";
   var logFlag = 1;
   var colCount = 1;
