@@ -17,7 +17,7 @@
 
 "use strict";
 (() => {
-  // src/lepro-total-comments.user.ts
+  // src/lepro-total-comments/lepro-total-comments.user.ts
   var BEST_THRESHOLD = 0.75;
   init();
   function init() {

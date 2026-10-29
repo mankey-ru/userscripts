@@ -13,7 +13,7 @@
 
 "use strict";
 (() => {
-  // src/discogs-extra-stuff.user.ts
+  // src/discogs-extra-stuff/discogs-extra-stuff.user.ts
   var projName = "DES";
   var logFlag = 1;
   var LINK_STYLE = "background: purple; display: inline-block; padding: 5px; color: #fff; text-decoration:none; border-radius: 5px; white-space: nowrap; cursor: pointer;";

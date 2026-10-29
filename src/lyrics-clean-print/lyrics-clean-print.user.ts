@@ -20,7 +20,7 @@ import {
 	extractYear,
 	formatFeatArtists,
 	pickColumnCount,
-} from './lyrics-clean-print.lib.ts';
+} from './lib.ts';
 
 const projName = 'LCP';
 

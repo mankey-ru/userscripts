@@ -7,7 +7,7 @@ import {
 	extractYear,
 	formatFeatArtists,
 	pickColumnCount,
-} from '../src/lyrics-clean-print.lib.ts';
+} from '../lib.ts';
 
 const par = (html: string) => `<p class="lyr-par">${html}</p>`;
 const subdiv = (text: string) => `<span class="lyr-subdiv">${text}</span>`;

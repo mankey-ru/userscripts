@@ -4,11 +4,11 @@ on:
   push:
     paths:
       - 'src/**'
-      - 'tests/**'
+      - '.github/workflows/build_dist.yml'
   pull_request:
     paths:
       - 'src/**'
-      - 'tests/**'
+      - '.github/workflows/build_dist.yml'
   workflow_dispatch:
 
 permissions:
@@ -46,7 +46,9 @@ jobs:
       - name: Build dist
         run: "npm run build:prod"
 
+      # pull_request runs check out a detached merge ref with nothing to push to
       - name: Commit and push built files
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

@@ -13,7 +13,7 @@
 
 "use strict";
 (() => {
-  // src/ring-my-droid.user.ts
+  // src/ring-my-droid/ring-my-droid.user.ts
   (async () => {
     const projName = "RMD";
     const logFlag = 1;
