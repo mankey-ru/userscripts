@@ -31,10 +31,7 @@
     cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Текст песни (.*?)\]/gis, "");
     cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, "");
     cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, "");
-    cleanedLyricsHTML = cleanedLyricsHTML.replace(
-      /\[(.*?)\]<br\s*\/?>/gis,
-      '<span class="lyr-subdiv">$1</span>'
-    );
+    cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[(.*?)\]<br\s*\/?>/gis, '<span class="lyr-subdiv">$1</span>');
     cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, " ");
     return cleanedLyricsHTML;
   }
@@ -86,9 +83,7 @@
       artistFeatElFiltered.map((el) => el.textContent),
       songArtist
     ) : "";
-    const excludedElements = document.querySelectorAll(
-      `[data-exclude-from-selection=true]`
-    );
+    const excludedElements = document.querySelectorAll(`[data-exclude-from-selection=true]`);
     log(
       `excludedElements.innerText=`,
       Array.from(excludedElements).map((el) => el.innerText.trim()).join(" | ")
@@ -99,16 +94,7 @@
     document.body.innerHTML = "";
     const lineQty = countLines(cleanedLyricsHTML);
     colCount = pickColumnCount(lineQty);
-    console.log(
-      `lineQty=`,
-      lineQty,
-      `colCount=`,
-      colCount,
-      `threshold1=`,
-      colThreshold1,
-      `threshold2=`,
-      colThreshold2
-    );
+    console.log(`lineQty=`, lineQty, `colCount=`, colCount, `threshold1=`, colThreshold1, `threshold2=`, colThreshold2);
     const container = document.createElement("div");
     container.id = "clean-print-container";
     container.style.padding = "20px";

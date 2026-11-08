@@ -46,10 +46,7 @@
       appendCell(trackRow, createLink("Vk Music", vkHref));
       appendCell(
         trackRow,
-        createLink(
-          "Google",
-          `https://www.google.com/search?num=20&newwindow=1&source=lnms&tbm=vid&q=${q}`
-        )
+        createLink("Google", `https://www.google.com/search?num=20&newwindow=1&source=lnms&tbm=vid&q=${q}`)
       );
     });
     const releaseBtnBar = document.createElement("div");
