@@ -15,19 +15,19 @@ Personal Tampermonkey userscripts (TypeScript, one folder per script in `src/<na
 - Build: `npm run build` (dev, to `dist-dev/`, git-ignored) or `npm run build:prod` (to `dist/`). `build.mjs` bundles each `src/<name>/<name>.user.ts` with esbuild into an IIFE, writes it to flat `dist/<name>.user.js` (the `@downloadURL` paths depend on that) and copies the `// ==UserScript==` header block as the file banner.
 - Type check: `npm run typecheck` (strict; `tsconfig.json` for scripts with DOM and Tampermonkey types, `tsconfig.test.json` for `*.test.ts` with Node types). TypeScript 7 ships a native binary per platform, so run `npm ci` on the machine that runs `tsc`: a `node_modules` installed on Windows fails on Linux with "Unable to resolve @typescript/typescript-linux-x64". The check is clean when `tsc` prints no errors.
 - Format: `npm run format` (Prettier on everything except `.prettierignore`; width 120 and indents come from `.editorconfig`). `.editorconfig`, `.prettierrc` and `.gitattributes` are copies of the owner's reference configs: never edit them above the `# ---- Project additions` line.
-- Tests: `npm test` runs `node --test` on `src/**/*.test.ts`: unit tests of pure helpers (`lib.test.ts`) and DOM tests (`<name>.dom.test.ts`, see below). DOM tests need Chromium: `npx playwright install chromium` once per machine. In a cloud session the CDN is blocked, so point the harness at the preinstalled browser: `CHROMIUM_PATH=/opt/pw-browsers/chromium npm test`. Behaviour on live sites cannot be checked in a cloud session: say so in the PR and list what the owner must click through.
+- Tests: `npm test` runs `node --test` on `src/**/*.test.ts`: unit tests of pure helpers (`lib.test.ts`) and DOM tests (`<name>.dom.test.ts`, see below). DOM tests need Chromium: `npx playwright install chromium` once per machine. In a cloud session the CDN is blocked, so point the harness at the preinstalled browser: `CHROMIUM_PATH=/opt/pw-browsers/chromium npm test`. Behaviour on live sites cannot be checked in a cloud session: say so in your answer and list what the owner must click through.
 
 ## DOM tests and fixtures
 
 - `test-utils/dom-harness.ts` opens HTML in headless Chromium (Playwright) at the real site URL, aborts every other request, puts timers under `page.clock` and injects the userscript bundled like `build.mjs`, honouring `@run-at`. Tests drive it from `node:test`, one browser per test file.
 - A script's DOM tests: `src/<name>/__tests__/<name>.dom.test.ts`. Small hand-written pages stay inline in the test; snapshots of real pages go to `src/<name>/__tests__/fixtures/<case>.html` (read them with `readFixture`).
 - Snapshots are captured with the `fixture-capture` userscript (menu "Save fixture") with the script under test disabled. The repo is public: before committing, remove tokens, session ids and personal data, and anonymize Leprosorium nicknames and comment text and Google Find device names. Keep each fixture under 1 MB.
-- A test that pins a known bug is marked `{ todo: '<what is wrong>' }`, not skipped; the fix goes in a separate PR.
+- A test that pins a known bug is marked `{ todo: '<what is wrong>' }`, not skipped; the fix goes in a separate commit.
 
 ## Conventions
 
 - Every script starts with a `// ==UserScript==` header: `@name`, `@description`, `@author`, `@namespace mankey-ru/<name>`, `@version`, `@match`, `@icon`, `@grant`, `@downloadURL` (raw URL of its `dist` file). Bump `@version` when behaviour changes.
-- A new script is `src/<name>/<name>.user.ts`; testable pure helpers go to `src/<name>/lib.ts`, their tests to `src/<name>/__tests__/lib.test.ts` (keep the `.test.ts` suffix), test data to `src/<name>/__tests__/fixtures/`. Add its section to `README.md` (name, sites, Install link, Source link) in the same PR.
+- A new script is `src/<name>/<name>.user.ts`; testable pure helpers go to `src/<name>/lib.ts`, their tests to `src/<name>/__tests__/lib.test.ts` (keep the `.test.ts` suffix), test data to `src/<name>/__tests__/fixtures/`. Add its section to `README.md` (name, sites, Install link, Source link) in the same commit.
 - Shared code goes to `src/_shared/index.ts`; it is bundled into each script, not loaded at runtime.
 - Keep files with LF line endings (the git index uses LF).
 
