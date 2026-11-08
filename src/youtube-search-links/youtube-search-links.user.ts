@@ -37,8 +37,7 @@ function makeLink(providerName: string, baseUrl: string) {
 	);
 	link.setAttribute('target', '_blank');
 	link.setAttribute('href', '#_href_will_be_set_on_click__target_is_blank_dont_be_a_pussy');
-	if (!elToAppend || !elToAppend.parentNode)
-		return log('makeLink: title element not found, aborting');
+	if (!elToAppend || !elToAppend.parentNode) return log('makeLink: title element not found, aborting');
 	elToAppend.parentNode.appendChild(link);
 	link.addEventListener('click', function () {
 		// @ts-expect-error

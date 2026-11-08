@@ -39,8 +39,8 @@ for (const input of files) {
 			entryPoints: [input],
 			outfile: output,
 			bundle: true,
-			minify: false,          // true для prod
-			sourcemap: false,       // 'inline' для dev
+			minify: false, // true для prod
+			sourcemap: false, // 'inline' для dev
 			target: 'es2022',
 			format: 'iife',
 			platform: 'browser',

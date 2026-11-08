@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import {
-	type Browser,
-	launchBrowser,
-	openWithUserscript,
-} from '../../../test-utils/dom-harness.ts';
+import { type Browser, launchBrowser, openWithUserscript } from '../../../test-utils/dom-harness.ts';
 
 const FIND_URL = 'https://www.google.com/android/find';
 
@@ -75,10 +71,7 @@ describe('ring-my-droid', () => {
 		async () => {
 			const { page } = await openWithUserscript(browser, {
 				url: `${FIND_URL}#_findMyDevice__Test%20Phone`,
-				html: PAGE.replace(
-					'</body>',
-					'<script>renderDevices(["Test Phone"])</script></body>',
-				),
+				html: PAGE.replace('</body>', '<script>renderDevices(["Test Phone"])</script></body>'),
 				script: 'ring-my-droid',
 			});
 			await page.clock.runFor(200);

@@ -50,10 +50,7 @@ export function readFixture(testDir: string, name: string): string {
  * Opens `html` at `url` with page timers under `page.clock` (advance them with
  * `page.clock.runFor(ms)`) and injects the userscript per its `@run-at`.
  */
-export async function openWithUserscript(
-	browser: Browser,
-	options: OpenOptions,
-): Promise<OpenedPage> {
+export async function openWithUserscript(browser: Browser, options: OpenOptions): Promise<OpenedPage> {
 	const page = await browser.newPage();
 	const errors: Error[] = [];
 	page.on('pageerror', (err) => errors.push(err));

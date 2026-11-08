@@ -45,9 +45,7 @@
 		return new Promise((resolve, reject) => {
 			const observer = new MutationObserver(() => {
 				const candidates = Array.from(document.querySelectorAll(selector));
-				const el = textContent
-					? candidates.find((e) => e.textContent?.includes(textContent))
-					: candidates[0];
+				const el = textContent ? candidates.find((e) => e.textContent?.includes(textContent)) : candidates[0];
 
 				if (el) {
 					observer.disconnect();

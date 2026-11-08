@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import {
-	type Browser,
-	launchBrowser,
-	openWithUserscript,
-} from '../../../test-utils/dom-harness.ts';
+import { type Browser, launchBrowser, openWithUserscript } from '../../../test-utils/dom-harness.ts';
 
 const WATCH_URL = 'https://www.youtube.com/watch?v=abc123';
 const PAGE = `<!doctype html><html><head><title>Artist - Song - YouTube</title></head>
@@ -115,9 +111,7 @@ describe('youtube-lazy-tabs: tab visible at start', () => {
 		await page.waitForLoadState('load');
 		await page.clock.runFor(3000);
 
-		const titles = JSON.parse(
-			(await page.evaluate((key) => localStorage.getItem(key), TITLES_KEY)) ?? '{}',
-		);
+		const titles = JSON.parse((await page.evaluate((key) => localStorage.getItem(key), TITLES_KEY)) ?? '{}');
 		const keys = Object.keys(titles);
 		assert.equal(keys.length, 500);
 		assert.equal(keys[0], 'v:old1');

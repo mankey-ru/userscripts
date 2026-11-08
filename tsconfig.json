@@ -1,13 +1,6 @@
 {
-  "include": [
-    "src/**/*",
-    "main.d.ts"
-  ],
-  "exclude": [
-    "dist",
-    "node_modules",
-    "src/**/*.test.ts"
-  ],
+  "include": ["src/**/*", "main.d.ts"],
+  "exclude": ["dist", "node_modules", "src/**/*.test.ts"],
   "compilerOptions": {
     "types": ["tampermonkey"],
     "target": "ES2022",
@@ -23,10 +16,6 @@
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ]
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
   }
 }

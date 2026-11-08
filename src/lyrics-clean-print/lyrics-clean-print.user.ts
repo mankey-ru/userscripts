@@ -85,9 +85,7 @@ function cleanPage(mode = 'EASY') {
 			)
 		: '';
 
-	const excludedElements = document.querySelectorAll<HTMLElement>(
-		`[data-exclude-from-selection=true]`,
-	);
+	const excludedElements = document.querySelectorAll<HTMLElement>(`[data-exclude-from-selection=true]`);
 	log(
 		`excludedElements.innerText=`,
 		Array.from(excludedElements)
@@ -110,16 +108,7 @@ function cleanPage(mode = 'EASY') {
 	const lineQty = countLines(cleanedLyricsHTML);
 	colCount = pickColumnCount(lineQty);
 
-	console.log(
-		`lineQty=`,
-		lineQty,
-		`colCount=`,
-		colCount,
-		`threshold1=`,
-		colThreshold1,
-		`threshold2=`,
-		colThreshold2,
-	);
+	console.log(`lineQty=`, lineQty, `colCount=`, colCount, `threshold1=`, colThreshold1, `threshold2=`, colThreshold2);
 
 	const container = document.createElement('div');
 	container.id = 'clean-print-container';

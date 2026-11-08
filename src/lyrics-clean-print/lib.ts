@@ -39,10 +39,7 @@ export function cleanLyricsHTML(lyricsHTML: string): string {
 	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[Songtext (.*?)\]/gis, '');
 	cleanedLyricsHTML = cleanedLyricsHTML.replaceAll(/\[Instrumental(.*?)\]/gis, '');
 
-	cleanedLyricsHTML = cleanedLyricsHTML.replace(
-		/\[(.*?)\]<br\s*\/?>/gis,
-		'<span class="lyr-subdiv">$1</span>',
-	);
+	cleanedLyricsHTML = cleanedLyricsHTML.replace(/\[(.*?)\]<br\s*\/?>/gis, '<span class="lyr-subdiv">$1</span>');
 
 	cleanedLyricsHTML = cleanedLyricsHTML.replace(/&nbsp;/g, ' ');
 	//cleanedLyricsHTML = cleanedLyricsHTML.replace(/(<br\s*\/?>\s*)+/gi, '<br>');

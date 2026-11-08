@@ -46,10 +46,7 @@ describe('cleanLyricsHTML', () => {
 	});
 
 	test('splits paragraphs on a double <br> in any form', () => {
-		assert.equal(
-			cleanLyricsHTML('One<br><br>Two<br/> <BR />Three'),
-			par('One') + par('Two') + par('Three'),
-		);
+		assert.equal(cleanLyricsHTML('One<br><br>Two<br/> <BR />Three'), par('One') + par('Two') + par('Three'));
 	});
 
 	test('turns section headers into subdiv spans', () => {
@@ -68,13 +65,9 @@ describe('cleanLyricsHTML', () => {
 		assert.equal(cleanLyricsHTML('[Songtext zu „Lied“]<br>Eins'), par('<br>Eins'));
 	});
 
-	test(
-		'caption removal leaves no leading line break',
-		{ todo: 'the <br> after the caption stays' },
-		() => {
-			assert.equal(cleanLyricsHTML('[Текст песни «Ляля»]<br>Раз'), par('Раз'));
-		},
-	);
+	test('caption removal leaves no leading line break', { todo: 'the <br> after the caption stays' }, () => {
+		assert.equal(cleanLyricsHTML('[Текст песни «Ляля»]<br>Раз'), par('Раз'));
+	});
 
 	test('removes [Instrumental ...] markers, leaving an empty paragraph hidden by CSS', () => {
 		assert.equal(
@@ -87,30 +80,16 @@ describe('cleanLyricsHTML', () => {
 		assert.equal(cleanLyricsHTML('La&nbsp;la'), par('La la'));
 	});
 
-	test(
-		'an inline [?] before a section header',
-		{ todo: '.*? runs from the [ of [?] to the header' },
-		() => {
-			assert.equal(
-				cleanLyricsHTML('Hey [?] ok<br>[Chorus]<br>La'),
-				par('Hey [?] ok<br>' + subdiv('Chorus') + 'La'),
-			);
-		},
-	);
+	test('an inline [?] before a section header', { todo: '.*? runs from the [ of [?] to the header' }, () => {
+		assert.equal(cleanLyricsHTML('Hey [?] ok<br>[Chorus]<br>La'), par('Hey [?] ok<br>' + subdiv('Chorus') + 'La'));
+	});
 
-	test(
-		'nested spans',
-		{ todo: 'non-greedy match closes the outer span at the inner </span>' },
-		() => {
-			assert.equal(cleanLyricsHTML('<span a><span b>x</span>y</span>'), par('xy'));
-		},
-	);
+	test('nested spans', { todo: 'non-greedy match closes the outer span at the inner </span>' }, () => {
+		assert.equal(cleanLyricsHTML('<span a><span b>x</span>y</span>'), par('xy'));
+	});
 
 	test('<img> is not taken for <i>', { todo: '<i[^>]*> also matches <img>' }, () => {
-		assert.equal(
-			cleanLyricsHTML('<img src="a.png">foo<i>bar</i>'),
-			par('<img src="a.png">foobar'),
-		);
+		assert.equal(cleanLyricsHTML('<img src="a.png">foo<i>bar</i>'), par('<img src="a.png">foobar'));
 	});
 });
 
@@ -148,10 +127,7 @@ describe('extractYear', () => {
 describe('formatFeatArtists', () => {
 	test('trims, drops translations and the main artist', () => {
 		assert.equal(
-			formatFeatArtists(
-				[' Slipknot ', 'Игорь Жирнов (Igor Zhirnov)', 'Corey Taylor'],
-				'Slipknot',
-			),
+			formatFeatArtists([' Slipknot ', 'Игорь Жирнов (Igor Zhirnov)', 'Corey Taylor'], 'Slipknot'),
 			'Игорь Жирнов, Corey Taylor',
 		);
 	});
