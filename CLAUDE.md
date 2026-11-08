@@ -4,8 +4,8 @@ Personal Tampermonkey userscripts (TypeScript, one folder per script in `src/<na
 
 ## Safety rules
 
-- Work only on a branch and open a PR. Never push to `main`: users install scripts straight from `main` (`@downloadURL` in each script header and the README Install links point at raw `dist/*.user.js`), so a merge reaches the owner's browser at once.
-- Never edit `dist/` by hand and do not commit it from a branch. The GitHub workflow `.github/workflows/build_dist.yml` rebuilds `dist/` and commits it as `github-actions[bot]` on every push that touches `src/**`.
+- Git: see `AGENTS_INCLUDES/GIT_RULES.md`. `main` is live: users install scripts straight from it (`@downloadURL` in each script header and the README Install links point at raw `dist/*.user.js`), so a push to `main` reaches the owner's browser once CI rebuilds `dist/`.
+- Never edit or commit `dist/` by hand. The GitHub workflow `.github/workflows/build_dist.yml` rebuilds `dist/` and commits it as `github-actions[bot]` on every push that touches `src/**`.
 - A deleted script needs its `dist/<name>.user.js` deleted manually: the workflow only adds files, it never removes them.
 - Do not add Claude attribution lines to commit messages or PR descriptions.
 
