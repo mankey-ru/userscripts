@@ -14,7 +14,7 @@ Personal Tampermonkey userscripts (TypeScript, one folder per script in `src/<na
 - Install: `npm ci`.
 - Build: `npm run build` (dev, to `dist-dev/`, git-ignored) or `npm run build:prod` (to `dist/`). `build.mjs` bundles each `src/<name>/<name>.user.ts` with esbuild into an IIFE, writes it to flat `dist/<name>.user.js` (the `@downloadURL` paths depend on that) and copies the `// ==UserScript==` header block as the file banner.
 - Type check: `npm run typecheck` (strict; `tsconfig.json` for scripts with DOM and Tampermonkey types, `tsconfig.test.json` for `*.test.ts` with Node types). TypeScript 7 ships a native binary per platform, so run `npm ci` on the machine that runs `tsc`: a `node_modules` installed on Windows fails on Linux with "Unable to resolve @typescript/typescript-linux-x64". The check is clean when `tsc` prints no errors.
-- Format: `npm run format` (Prettier: tabs, single quotes, width 100).
+- Format: `npm run format` (Prettier on everything except `.prettierignore`; width 120 and indents come from `.editorconfig`). `.editorconfig`, `.prettierrc` and `.gitattributes` are copies of the owner's reference configs: never edit them above the `# ---- Project additions` line.
 - Tests: `npm test` runs `node --test` on `src/**/*.test.ts`: unit tests of pure helpers (`lib.test.ts`) and DOM tests (`<name>.dom.test.ts`, see below). DOM tests need Chromium: `npx playwright install chromium` once per machine. In a cloud session the CDN is blocked, so point the harness at the preinstalled browser: `CHROMIUM_PATH=/opt/pw-browsers/chromium npm test`. Behaviour on live sites cannot be checked in a cloud session: say so in the PR and list what the owner must click through.
 
 ## DOM tests and fixtures

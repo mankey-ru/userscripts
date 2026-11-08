@@ -1,0 +1,4 @@
+# Built by CI (.github/workflows/build_dist.yml), never by hand
+dist/
+# Captured test data: formatting would change the DOM under test
+**/__tests__/fixtures/
