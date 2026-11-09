@@ -3,7 +3,7 @@
 // @description  Adds extra search links to discogs.com including Rutracker and VK.com music
 // @author       mankey-ru
 // @namespace    mankey-ru/discogs-extra-stuff
-// @version      1.1
+// @version      1.2
 // @match        https://www.discogs.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=discogs.com
 // @grant        none
@@ -16,16 +16,17 @@
   // src/discogs-extra-stuff/discogs-extra-stuff.user.ts
   var projName = "DES";
   var logFlag = 1;
-  var LINK_STYLE = "background: purple; display: inline-block; padding: 5px; color: #fff; text-decoration:none; border-radius: 5px; white-space: nowrap; cursor: pointer;";
+  var LINK_STYLE = "background: purple; display: inline-block; padding: 1px 6px; font-size: 12px; line-height: 1.5; color: #fff; text-decoration:none; border-radius: 3px; white-space: nowrap; cursor: pointer;";
+  var RELEASE_BAR_STYLE = "display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-bottom: 4px;";
   window.setTimeout(init, 1e3);
   function init() {
     const titleEl = document.querySelector("h1");
-    const trackListEl = document.querySelector("[class^=tracklist]");
     const trackTitleTds = document.querySelectorAll("td[class^=trackTitle]");
-    if (!titleEl || !trackListEl || !trackTitleTds.length) {
+    const trackTableEl = trackTitleTds[0]?.closest("table");
+    if (!titleEl || !trackTableEl) {
       console.error(`Discogs Search Links: required elements not found`, {
         titleEl,
-        trackListEl,
+        trackTableEl,
         trackTitleTds
       });
       return;
@@ -38,20 +39,25 @@
       const trackRow = trackTitleTd.closest("tr");
       if (!trackRow) return;
       const trackArtist = isVarious ? getTrackRowArtist(trackRow) : releaseArtist;
-      const trackTitle = trackTitleTd.textContent.trim();
+      const trackTitle = getTrackTitle(trackTitleTd);
       log(`${i} ${trackArtist} - ${trackTitle}`);
-      const q = encodeURIComponent(trackArtist + " \u2014 " + trackTitle);
+      const query = `${trackArtist} \u2014 ${trackTitle}`;
+      const q = encodeURIComponent(query);
       const vkHref = `https://vk.com/audios1239592?q=${q}`;
       vkHrefs.push(vkHref);
-      appendCell(trackRow, createLink("Vk Music", vkHref));
+      appendCell(trackRow, createLink("VkMus", vkHref));
       appendCell(
         trackRow,
         createLink("Google", `https://www.google.com/search?num=20&newwindow=1&source=lnms&tbm=vid&q=${q}`)
       );
+      appendCell(
+        trackRow,
+        createLink("Lyrics", `https://www.google.com/search?q=${encodeURIComponent(query + " lyrics")}`)
+      );
     });
     const releaseBtnBar = document.createElement("div");
-    releaseBtnBar.style.textAlign = "right";
-    trackListEl.prepend(releaseBtnBar);
+    releaseBtnBar.style.cssText = RELEASE_BAR_STYLE;
+    trackTableEl.before(releaseBtnBar);
     releaseBtnBar.append(
       createOpenAllLink(vkHrefs),
       createLink(
@@ -68,6 +74,10 @@
     const artistEl = trackRow.querySelector("[class^=artist_]");
     if (!artistEl) return "";
     return artistEl.textContent.trim().replace("\u2013", "").replace(/\(\d+\)$/g, "");
+  }
+  function getTrackTitle(trackTitleTd) {
+    const titleEl = trackTitleTd.querySelector("span[class*=trackTitle]");
+    return (titleEl ?? trackTitleTd).textContent.trim();
   }
   function rutrackerSearchUrl(query) {
     return `https://rutracker.org/forum/tracker.php?nm=${encodeURIComponent(query)}&f[]=-1&o=10&s=2&pn=`;
