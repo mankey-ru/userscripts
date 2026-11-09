@@ -12,7 +12,7 @@ Personal [Tampermonkey](https://www.tampermonkey.net/)-style userscripts by [man
 
 ### [DES] Discogs Extra Stuff
 
-Adds extra search links on [Discogs](https://www.discogs.com/) release/tracklist pages (e.g. VK Music, Google video search) for each track.
+Adds extra search links on [Discogs](https://www.discogs.com/) release/tracklist pages (e.g. VK Music, Google video search, Google lyrics search) for each track.
 
 |             |                                                                                                                              |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
